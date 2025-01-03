@@ -4,6 +4,7 @@ from chainlit.utils import mount_chainlit
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from loguru import logger
 from starlette.staticfiles import StaticFiles
 import traceback
@@ -60,3 +61,28 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"error": str(exc), "traceback": traceback.format_exc()},
     )
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title="OpenAgent API",
+        version="1.0.0",
+        description="OpenAgent API documentation",
+        routes=app.routes,
+    )
+
+    openapi_schema["servers"] = [
+        {
+            "url": "https://agent.open.network",
+            "description": "Production server"
+        }
+    ]
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
