@@ -1,7 +1,12 @@
 [project]
-name = "oa"
-version = "0.1.0"
-description = "Add your description here"
+name = "openagent"
+version = "2.0.0"
+description = "OpenAgent is a framework for building AI applications leveraging the power of blockchains and RSS3 Network."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115.6",
+    "loguru",
+    "python-dotenv>=1.0.1",
+    "uvicorn>=0.34.0",
+]
