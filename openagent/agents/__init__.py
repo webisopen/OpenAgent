@@ -1,3 +1,5 @@
+from os import environ
+
 from phi.agent import Agent
 from phi.model.base import Model
 from phi.model.ollama import Ollama
@@ -21,13 +23,13 @@ def build_model(model: str) -> Model:
 
     match provider:
         case "openai":
-            return OpenAIChat(id=model_id)
+            return OpenAIChat(id=model_id, base_url=environ.get("OPENAI_BASE_URL"))
         case "anthropic":
-            return Claude(id=model_id)
+            return Claude(id=model_id, client_params={"base_url": environ.get("ANTHROPIC_BASE_URL")})
         case "google":
-            return Gemini(id=model_id)
+            return Gemini(id=model_id, client_params={"base_url": environ.get("GOOGLE_BASE_URL")})
         case "ollama":
-            return Ollama(id=model_id)
+            return Ollama(id=model_id, host=environ.get("OLLAMA_BASE_URL"))
         case _:
             raise UnsupportedModel(model)
 
