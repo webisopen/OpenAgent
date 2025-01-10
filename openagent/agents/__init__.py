@@ -25,9 +25,14 @@ def build_model(model: str) -> Model:
         case "openai":
             return OpenAIChat(id=model_id, base_url=environ.get("OPENAI_BASE_URL"))
         case "anthropic":
-            return Claude(id=model_id, client_params={"base_url": environ.get("ANTHROPIC_BASE_URL")})
+            return Claude(
+                id=model_id,
+                client_params={"base_url": environ.get("ANTHROPIC_BASE_URL")},
+            )
         case "google":
-            return Gemini(id=model_id, client_params={"base_url": environ.get("GOOGLE_BASE_URL")})
+            return Gemini(
+                id=model_id, client_params={"base_url": environ.get("GOOGLE_BASE_URL")}
+            )
         case "ollama":
             return Ollama(id=model_id, host=environ.get("OLLAMA_BASE_URL"))
         case _:
