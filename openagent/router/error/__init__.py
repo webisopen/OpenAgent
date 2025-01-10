@@ -6,7 +6,7 @@ class APIExceptionResponse(JSONResponse):
         super().__init__(
             status_code=status_code,
             content={
-                "error": error.__str__(),
+                "error": str(error),
             },
         )
 

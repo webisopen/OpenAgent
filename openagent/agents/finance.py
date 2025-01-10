@@ -1,7 +1,8 @@
 from phi.agent import Agent
-from phi.tools.yfinance import YFinanceTools
+
+from openagent.tools import CoinGeckoTools
 
 finance_agent = Agent(
     name="Finance Agent",
-    tools=[YFinanceTools(stock_price=True)],
+    tools=[CoinGeckoTools()],
 )
