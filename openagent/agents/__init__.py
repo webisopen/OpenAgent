@@ -36,7 +36,6 @@ def build_agent_team(model: str) -> Agent:
     return Agent(
         team=[finance_agent],
         model=build_model(model),
-        show_tool_calls=True,
     )
 
 
