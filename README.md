@@ -10,9 +10,6 @@
 
 # OpenAgent Framework
 
-OpenAgent is a framework for building AI applications leveraging the power of blockchains and RSS3 Network.
-
-OpenAgent was originally developed by RSS3, an Open project.
-It has been transferred to Open to further expand its potential.
+OpenAgent is a framework for building AI agents capable of on-chain executions powered by Open. It equips AI agents with verifiable compute, enabling them to execute complex, intensive, or high-sensitivity operations with precision and reliability, such as defAI and deSci. Each compute is verifiable via Open Verifier with the proof-of-compute on the destination chain.
 
 For more information, please visit the [OpenAgent docs](https://docs.open.network/guide/openstack/openagent).
