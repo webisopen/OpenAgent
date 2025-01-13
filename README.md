@@ -13,8 +13,6 @@
 OpenAgent is a framework for rapidly launching functional AI agents powered by Open.
 It equips AI agents with verifiable compute, enabling them to execute complex, intensive, or high-sensitivity operations with precision and reliability, such as DeFAI and DeSci.
 
-<p align="center">
-  <img width="180" src="https://raw.githubusercontent.com/webisopen/OpenAgent/main/public/architecture.png" alt="OpenAgent Architecture">
-</p>
+![OpenAgent Architecture](https://raw.githubusercontent.com/webisopen/OpenAgent/main/public/architecture.png)
 
 For more information, please visit the [OpenAgent docs](https://docs.open.network/guide/openstack/openagent).
