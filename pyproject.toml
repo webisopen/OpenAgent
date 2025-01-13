@@ -13,6 +13,7 @@ dependencies = [
     "openai>=1.59.6",
     "phidata>=2.7.7",
     "python-dotenv>=1.0.1",
+    "sqlalchemy-orm>=1.2.10",
     "uvicorn>=0.34.0",
     "yfinance>=0.2.51",
 ]
