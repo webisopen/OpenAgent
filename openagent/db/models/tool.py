@@ -18,9 +18,6 @@ class Tool(Base):
     name = Column(String, nullable=False)
     description = Column(Text)
     type = Column(Enum(ToolType), nullable=False)
-    agent_id = Column(
-        Integer, nullable=False
-    )  # Use global agent personality and instruction
     model_id = Column(Integer, nullable=False)  # One-to-one relationship with Model
     config = Column(Text)  # Configuration stored in JSON format
     created_at = Column(DateTime, default=datetime.UTC, nullable=False)
