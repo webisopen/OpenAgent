@@ -3,7 +3,7 @@ name = "openagent"
 version = "2.0.0"
 description = "OpenAgent is a framework for building AI applications leveraging the power of blockchains and RSS3 Network."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "anthropic>=0.42.0",
     "fastapi>=0.115.6",
@@ -18,7 +18,5 @@ dependencies = [
     "yfinance>=0.2.51",
 ]
 
-[dependency-groups]
-dev = [
-    "ruff>=0.9.0",
-]
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.9.1"
