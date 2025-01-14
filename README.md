@@ -13,9 +13,7 @@
 OpenAgent is a framework for rapidly launching functional AI agents powered by Open.
 It equips AI agents with verifiable compute, enabling them to execute complex, intensive, or high-sensitivity operations with precision and reliability, such as DeFAI and DeSci.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/webisopen/OpenAgent/main/public/architecture.png" alt="OpenAgent Architecture">
-</p>
+![OpenAgent Architecture](https://raw.githubusercontent.com/webisopen/OpenAgent/main/public/architecture.png)
 
 For more information, please visit the [OpenAgent docs](https://docs.open.network/guide/openstack/openagent).
 
@@ -23,16 +21,16 @@ For more information, please visit the [OpenAgent docs](https://docs.open.networ
 
 ### Prerequisites
 
-Install [uv](https://github.com/astral-sh/uv) based on your operating system.
+Install [poetry](https://python-poetry.org/docs/) based on your operating system.
 
 ### Install Dependencies
 
 ```bash
-uv sync
+poetry install
 ```
 
 ### Run the project
 
 ```bash
-uv run main.py
+poetry run python main.py
 ```
