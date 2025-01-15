@@ -16,6 +16,9 @@ dependencies = [
     "sqlalchemy-orm>=1.2.10",
     "uvicorn>=0.34.0",
     "yfinance>=0.2.51",
+    "psycopg2-binary (>=2.9.10,<3.0.0)",
+    "atlas-provider-sqlalchemy (>=0.2.4,<0.3.0)",
+    "alembic (>=1.14.0,<2.0.0)",
 ]
 
 [tool.poetry.group.dev.dependencies]

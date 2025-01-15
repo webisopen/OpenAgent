@@ -1,13 +1,14 @@
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    DateTime,
-)
-from sqlalchemy.orm import declarative_base
-from datetime import datetime
+import enum
 
-Base = declarative_base()  # type: ignore
+from sqlalchemy import Column, Integer, String, DateTime, ARRAY, Enum
+from datetime import datetime, UTC
+
+from openagent.db.models.base import Base
+
+
+class AgentStatus(enum.Enum):
+    INACTIVE = "inactive"
+    ACTIVE = "active"
 
 
 class Agent(Base):
@@ -26,9 +27,12 @@ class Agent(Base):
     twitter = Column(String)
     telegram = Column(String)
     website = Column(String)
-    type = Column(String, nullable=False)
-    status = Column(String)
-    created_at = Column(DateTime, default=datetime.UTC, nullable=False)
+    tool_ids = Column(ARRAY(Integer))
+    status = Column(Enum(AgentStatus), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime, default=datetime.UTC, onupdate=datetime.UTC, nullable=False
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )

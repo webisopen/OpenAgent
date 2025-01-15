@@ -1,9 +1,7 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Enum
-from sqlalchemy.orm import declarative_base
-from datetime import datetime
+from sqlalchemy import Column, Integer, String, Text, DateTime, Enum, JSON
+from openagent.db.models.base import Base
+from datetime import datetime, UTC
 import enum
-
-Base = declarative_base()  # type: ignore
 
 
 class ToolType(enum.Enum):
@@ -19,8 +17,11 @@ class Tool(Base):
     description = Column(Text)
     type = Column(Enum(ToolType), nullable=False)
     model_id = Column(Integer, nullable=False)  # One-to-one relationship with Model
-    config = Column(Text)  # Configuration stored in JSON format
-    created_at = Column(DateTime, default=datetime.UTC, nullable=False)
+    parameters = Column(JSON)  # Configuration stored in JSON format
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime, default=datetime.UTC, onupdate=datetime.UTC, nullable=False
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )

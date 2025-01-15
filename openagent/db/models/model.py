@@ -1,8 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, Float, DateTime
-from sqlalchemy.orm import declarative_base
-from datetime import datetime
-
-Base = declarative_base()  # type: ignore
+from openagent.db.models.base import Base
+from datetime import datetime, UTC
 
 
 class Model(Base):
@@ -15,7 +13,10 @@ class Model(Base):
     capabilities = Column(
         String
     )  # Stores ModelCapability list as comma-separated string
-    created_at = Column(DateTime, default=datetime.UTC, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime, default=datetime.UTC, onupdate=datetime.UTC, nullable=False
+        DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )

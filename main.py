@@ -1,11 +1,10 @@
 from dotenv import load_dotenv
-from loguru import logger
-
 import openagent
+from openagent.db import init_db
 
 if __name__ == "__main__":
     load_dotenv()
 
-    logger.info("Starting OpenAgent")
+    init_db()
 
     openagent.run()
