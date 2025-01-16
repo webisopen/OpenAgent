@@ -71,8 +71,6 @@ def upgrade() -> None:
             postgresql.ENUM("text_generation", "social_integration", name="tool_type"),
             nullable=False,
         ),
-        sa.Column("model_id", sa.Integer(), nullable=False),
-        sa.Column("parameters", postgresql.JSONB(), nullable=True),
         sa.Column(
             "created_at",
             postgresql.TIMESTAMP(timezone=True),
@@ -84,10 +82,6 @@ def upgrade() -> None:
             postgresql.TIMESTAMP(timezone=True),
             server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
-        ),
-        sa.ForeignKeyConstraint(
-            ["model_id"],
-            ["models.id"],
         ),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -114,7 +108,7 @@ def upgrade() -> None:
         sa.Column("twitter", sa.String(length=255), nullable=True),
         sa.Column("telegram", sa.String(length=255), nullable=True),
         sa.Column("website", sa.String(length=255), nullable=True),
-        sa.Column("tool_ids", postgresql.ARRAY(sa.Integer()), nullable=True),
+        sa.Column("tool_configs", postgresql.JSONB(), nullable=True),
         sa.Column(
             "status",
             postgresql.ENUM("inactive", "active", name="agent_status"),

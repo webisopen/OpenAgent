@@ -1,19 +1,16 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
-from .routes import chat_router
-from openagent.db import get_db
+from .routes import chat_router, agent_router
 
-app = FastAPI()
-
-
-def get_db_session():
-    db = get_db()
-    try:
-        yield db
-    finally:
-        db.close()
-
+app = FastAPI(
+    title="OpenAgent API",
+    description="OpenAgent is an AI agent platform that supports multiple LLM providers and tools.",
+    version="1.0.0",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,3 +21,4 @@ app.add_middleware(
 )
 
 app.include_router(chat_router)
+app.include_router(agent_router)
