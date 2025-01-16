@@ -1,10 +1,10 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
 import os
 from alembic.config import Config
 from alembic import command
 
-_SessionLocal = None
+_SessionLocal: sessionmaker
 
 
 def init_db():
@@ -15,26 +15,24 @@ def init_db():
         raise ValueError("DATABASE_URL must be set")
 
     engine = create_engine(database_url)
-    SessionLocal = sessionmaker(bind=engine)
+
+    global _SessionLocal
+
+    _SessionLocal = sessionmaker(bind=engine)
 
     # Run migrations
     alembic_cfg = Config("alembic.ini")
     command.upgrade(alembic_cfg, "head")
 
-    return engine, SessionLocal
+    return engine, _SessionLocal
 
 
-def get_db() -> Session:
+def get_db():
     """Get a database session."""
     if _SessionLocal is None:
         raise RuntimeError("Database not initialized. Call init_db() first.")
 
-    db = _SessionLocal()
-    try:
-        return db
-    except:
-        db.close()
-        raise
+    return _SessionLocal()
 
 
 __all__ = ["init_db", "get_db"]
