@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
-from .routes import chat_router, agent_router
+from .routes import chat_router, agent_router, model_router, tool_router
 
 app = FastAPI(
     title="OpenAgent API",
@@ -21,3 +21,5 @@ app.add_middleware(
 
 app.include_router(chat_router)
 app.include_router(agent_router)
+app.include_router(model_router)
+app.include_router(tool_router)

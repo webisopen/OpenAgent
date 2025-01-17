@@ -6,7 +6,11 @@ from openagent.db.models.agent import Agent, AgentStatus
 from openagent.db.models.model import Model
 from openagent.db.models.tool import Tool
 from openagent.router.routes.models.request import CreateAgentRequest
-from openagent.router.routes.models.response import AgentResponse, ResponseModel
+from openagent.router.routes.models.response import (
+    AgentResponse,
+    ResponseModel,
+    AgentListResponse,
+)
 from openagent.router.error import APIExceptionResponse
 from openagent.tools import ToolConfig
 from openagent.db import get_db
@@ -95,7 +99,7 @@ def create_agent(
 
 @router.get(
     "",
-    response_model=ResponseModel[List[AgentResponse]],
+    response_model=ResponseModel[AgentListResponse],
     summary="List all agents",
     description="Get a paginated list of all agents",
     responses={
@@ -105,13 +109,17 @@ def create_agent(
 )
 def list_agents(
     page: int = 0, limit: int = 10, db: Session = Depends(get_db)
-) -> Union[ResponseModel[List[AgentResponse]], APIExceptionResponse]:
+) -> Union[ResponseModel[dict], APIExceptionResponse]:
     try:
-        agents = db.query(Agent).offset(page).limit(limit).all()
+        total = db.query(Agent).count()
+        agents = db.query(Agent).offset(page * limit).limit(limit).all()
         return ResponseModel(
             code=status.HTTP_200_OK,
-            data=[AgentResponse.model_validate(agent) for agent in agents],
-            message=f"Retrieved {len(agents)} agents",
+            data=AgentListResponse(
+                agents=[AgentResponse.model_validate(agent) for agent in agents],
+                total=total,
+            ),
+            message=f"Retrieved {len(agents)} agents out of {total}",
         )
     except Exception as error:
         return APIExceptionResponse(
@@ -172,6 +180,10 @@ def update_agent(
                 status_code=status.HTTP_404_NOT_FOUND,
                 error=f"Agent with ID {agent_id} not found",
             )
+
+        # check if the tool_configs are valid
+        if error := check_tool_configs(request.tool_configs, db):
+            return error
 
         for key, value in request.model_dump(exclude_unset=True).items():
             setattr(agent, key, value)
