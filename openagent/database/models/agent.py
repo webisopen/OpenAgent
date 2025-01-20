@@ -1,9 +1,9 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, DateTime, ARRAY, Enum
+from sqlalchemy import Column, Integer, String, DateTime, JSON, Enum
 from datetime import datetime, UTC
 
-from openagent.db.models.base import Base
+from openagent.database.models.base import Base
 
 
 class AgentStatus(enum.Enum):
@@ -27,7 +27,7 @@ class Agent(Base):
     twitter = Column(String)
     telegram = Column(String)
     website = Column(String)
-    tool_ids = Column(ARRAY(Integer))
+    tool_configs = Column(JSON)
     status = Column(Enum(AgentStatus), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(

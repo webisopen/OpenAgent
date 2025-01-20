@@ -1,25 +1,17 @@
 import time
 import uuid
-from typing import List, Union
-
+from typing import Union
 from fastapi import APIRouter, status
 from openai.types.chat import (
-    ChatCompletionMessageParam,
     ChatCompletion,
     ChatCompletionMessage,
 )
 from openai.types.chat.chat_completion import Choice
-from pydantic import BaseModel
-
 from openagent.agents import build_agent_team
 from openagent.router.error import APIExceptionResponse
+from openagent.router.routes.models.request import CreateChatCompletionRequest
 
 router = APIRouter(tags=["chat"])
-
-
-class CreateChatCompletionRequest(BaseModel):
-    model: str
-    messages: List[ChatCompletionMessageParam]
 
 
 @router.post(

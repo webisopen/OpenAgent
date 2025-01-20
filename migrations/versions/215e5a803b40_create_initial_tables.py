@@ -34,9 +34,14 @@ def upgrade() -> None:
             server_default=sa.text("nextval('models_id_seq')"),
             nullable=False,
         ),
-        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=False, unique=True),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("capability_score", postgresql.DOUBLE_PRECISION(), nullable=False),
+        sa.Column(
+            "capability_score",
+            postgresql.DOUBLE_PRECISION(),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("capabilities", sa.String(length=255), nullable=True),
         sa.Column(
             "created_at",
@@ -51,7 +56,6 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("name"),
     )
 
     # Create tools table
@@ -64,15 +68,14 @@ def upgrade() -> None:
             server_default=sa.text("nextval('tools_id_seq')"),
             nullable=False,
         ),
-        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=False, unique=True),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column(
             "type",
             postgresql.ENUM("text_generation", "social_integration", name="tool_type"),
             nullable=False,
+            index=True,
         ),
-        sa.Column("model_id", sa.Integer(), nullable=False),
-        sa.Column("parameters", postgresql.JSONB(), nullable=True),
         sa.Column(
             "created_at",
             postgresql.TIMESTAMP(timezone=True),
@@ -84,10 +87,6 @@ def upgrade() -> None:
             postgresql.TIMESTAMP(timezone=True),
             server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
-        ),
-        sa.ForeignKeyConstraint(
-            ["model_id"],
-            ["models.id"],
         ),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -102,11 +101,11 @@ def upgrade() -> None:
             server_default=sa.text("nextval('agents_id_seq')"),
             nullable=False,
         ),
-        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=False, index=True),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("personality", sa.Text(), nullable=True),
         sa.Column("instruction", sa.Text(), nullable=True),
-        sa.Column("wallet_address", sa.String(length=255), nullable=False),
+        sa.Column("wallet_address", sa.String(length=255), nullable=False, index=True),
         sa.Column("token_image", sa.String(length=255), nullable=True),
         sa.Column("ticker", sa.String(length=50), nullable=False),
         sa.Column("contract_address", sa.String(length=255), nullable=True),
@@ -114,7 +113,7 @@ def upgrade() -> None:
         sa.Column("twitter", sa.String(length=255), nullable=True),
         sa.Column("telegram", sa.String(length=255), nullable=True),
         sa.Column("website", sa.String(length=255), nullable=True),
-        sa.Column("tool_ids", postgresql.ARRAY(sa.Integer()), nullable=True),
+        sa.Column("tool_configs", postgresql.JSONB(), nullable=True),
         sa.Column(
             "status",
             postgresql.ENUM("inactive", "active", name="agent_status"),
@@ -133,7 +132,6 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("name"),
     )
 
 
