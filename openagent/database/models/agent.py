@@ -3,7 +3,7 @@ import enum
 from sqlalchemy import Column, Integer, String, DateTime, JSON, Enum
 from datetime import datetime, UTC
 
-from openagent.db.models.base import Base
+from openagent.database.models.base import Base
 
 
 class AgentStatus(enum.Enum):

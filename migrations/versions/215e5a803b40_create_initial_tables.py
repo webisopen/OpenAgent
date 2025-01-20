@@ -34,9 +34,14 @@ def upgrade() -> None:
             server_default=sa.text("nextval('models_id_seq')"),
             nullable=False,
         ),
-        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=False, unique=True),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("capability_score", postgresql.DOUBLE_PRECISION(), nullable=False),
+        sa.Column(
+            "capability_score",
+            postgresql.DOUBLE_PRECISION(),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("capabilities", sa.String(length=255), nullable=True),
         sa.Column(
             "created_at",
@@ -51,7 +56,6 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("name"),
     )
 
     # Create tools table
@@ -64,12 +68,13 @@ def upgrade() -> None:
             server_default=sa.text("nextval('tools_id_seq')"),
             nullable=False,
         ),
-        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=False, unique=True),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column(
             "type",
             postgresql.ENUM("text_generation", "social_integration", name="tool_type"),
             nullable=False,
+            index=True,
         ),
         sa.Column(
             "created_at",
@@ -96,11 +101,11 @@ def upgrade() -> None:
             server_default=sa.text("nextval('agents_id_seq')"),
             nullable=False,
         ),
-        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=False, index=True),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("personality", sa.Text(), nullable=True),
         sa.Column("instruction", sa.Text(), nullable=True),
-        sa.Column("wallet_address", sa.String(length=255), nullable=False),
+        sa.Column("wallet_address", sa.String(length=255), nullable=False, index=True),
         sa.Column("token_image", sa.String(length=255), nullable=True),
         sa.Column("ticker", sa.String(length=50), nullable=False),
         sa.Column("contract_address", sa.String(length=255), nullable=True),
@@ -127,7 +132,6 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("name"),
     )
 
 

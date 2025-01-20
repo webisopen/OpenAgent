@@ -2,14 +2,14 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from typing import Union
 
-from openagent.db.models.model import Model
+from openagent.database.models.model import Model
 from openagent.router.routes.models.response import (
     ModelResponse,
     ModelListResponse,
     ResponseModel,
 )
 from openagent.router.error import APIExceptionResponse
-from openagent.db import get_db
+from openagent.database import get_db
 
 router = APIRouter(prefix="/models", tags=["models"])
 

@@ -19,6 +19,9 @@ dependencies = [
     "psycopg2-binary (>=2.9.10,<3.0.0)",
     "atlas-provider-sqlalchemy (>=0.2.4,<0.3.0)",
     "alembic (>=1.14.0,<2.0.0)",
+    "eth-account (>=0.13.4,<0.14.0)",
+    "web3 (>=7.7.0,<8.0.0)",
+    "redis (>=5.2.1,<6.0.0)",
 ]
 
 [tool.poetry.group.dev.dependencies]

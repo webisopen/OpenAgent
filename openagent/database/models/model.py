@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, Float, DateTime
-from openagent.db.models.base import Base
+from openagent.database.models.base import Base
 from datetime import datetime, UTC
 
 

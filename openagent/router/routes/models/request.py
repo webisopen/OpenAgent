@@ -16,7 +16,6 @@ class CreateAgentRequest(BaseModel):
     description: Optional[str] = None
     personality: Optional[str] = None
     instruction: Optional[str] = None
-    wallet_address: str
     token_image: Optional[str] = None
     ticker: str
     contract_address: Optional[str] = None

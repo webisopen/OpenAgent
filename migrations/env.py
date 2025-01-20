@@ -7,7 +7,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from openagent.db.models.base import Base
+from openagent.database.models.base import Base
 
 load_dotenv()
 

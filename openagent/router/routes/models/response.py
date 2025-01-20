@@ -1,7 +1,7 @@
 from typing import Optional, Generic, TypeVar, List
 from pydantic import BaseModel
-from openagent.db.models.agent import AgentStatus
-from openagent.db.models.tool import ToolType
+from openagent.database.models.agent import AgentStatus
+from openagent.database.models.tool import ToolType
 from openagent.tools import ToolConfig
 
 T = TypeVar("T")
