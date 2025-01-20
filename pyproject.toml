@@ -19,6 +19,8 @@ dependencies = [
     "psycopg2-binary (>=2.9.10,<3.0.0)",
     "atlas-provider-sqlalchemy (>=0.2.4,<0.3.0)",
     "alembic (>=1.14.0,<2.0.0)",
+    "tweepy (>=4.14.0,<5.0.0)",
+    "pytest (>=8.3.4,<9.0.0)",
 ]
 
 [tool.poetry.group.dev.dependencies]
