@@ -12,7 +12,6 @@ class TestTwitterTools(unittest.TestCase):
         self.tweet_tools = TweetGeneratorTools()
         self.required_env_vars = [
             "OPENAI_API_KEY",
-            "OPENAI_BASE_URL",
             "TWITTER_API_KEY",
             "TWITTER_API_SECRET",
             "TWITTER_ACCESS_TOKEN",
@@ -36,29 +35,29 @@ class TestTwitterTools(unittest.TestCase):
         """Test tweet generation with personality and posting"""
         print("\ntest_tweet_generation_and_posting")
 
-        # Test case for tweet generation
+        # Test case for tweet generation and posting
         personality = "tech enthusiast"
         topic = "AI and machine learning innovations"
         expected_terms = ["AI", "tech", "machine learning", "innovation"]
 
         try:
-            # Generate tweet
-            print(f"\nGenerating tweet as {personality} about {topic}...")
-            tweet_content = self.tweet_tools.generate_tweet(
+            # Generate and post tweet
+            print(f"\nGenerating and posting tweet as {personality} about {topic}...")
+            success, tweet_content = self.tweet_tools.generate_tweet(
                 personality=personality, topic=topic
             )
 
-            # Validate generated tweet
-            self.assertIsInstance(tweet_content, str, "Tweet should be a string")
+            # Validate the result
             self.assertTrue(
-                0 < len(tweet_content) <= 280,
-                f"Tweet length ({len(tweet_content)}) should be between 1 and 280 characters",
+                success, f"Tweet generation/posting failed: {tweet_content}"
             )
+            print("✓ Tweet generated and posted successfully")
+            print(f"Tweet content: {tweet_content}")
+
+            # Validate tweet content
             self.assertTrue(
                 "#" in tweet_content, "Tweet should contain at least one hashtag"
             )
-
-            # Content validation
             found_terms = [
                 term for term in expected_terms if term.lower() in tweet_content.lower()
             ]
@@ -67,17 +66,8 @@ class TestTwitterTools(unittest.TestCase):
                 f"Tweet should contain at least one of {expected_terms}. Content: {tweet_content}",
             )
 
-            print(f"✓ Generated tweet ({len(tweet_content)} chars):")
-            print("-" * 60)
-            print(tweet_content)
-            print("-" * 60)
+            print("✓ Tweet content validation passed")
             print(f"Found terms: {', '.join(found_terms)}")
-
-            # Post the generated tweet
-            print("\nPosting generated tweet...")
-            success, message = self.tweet_tools.post_tweet(tweet_content)
-            self.assertTrue(success, f"Tweet posting failed: {message}")
-            print(f"✓ Tweet posted successfully: {message}")
 
         except Exception as e:
             self.fail(f"Tweet generation and posting failed: {str(e)}")

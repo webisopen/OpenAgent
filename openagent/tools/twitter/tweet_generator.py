@@ -1,8 +1,9 @@
 import logging
 import os
-from typing import Tuple
+from typing import Tuple, Optional
 from phi.tools import Toolkit
 from phi.model.openai import OpenAIChat
+from phi.model.base import Model
 from phi.model.message import Message
 from dotenv import load_dotenv
 from .twitter_handler import TwitterHandler
@@ -31,44 +32,48 @@ Requirements for the tweet:
 
 
 class TweetGeneratorTools(Toolkit):
-    def __init__(self):
+    def __init__(self, model: Optional[Model] = None):
         super().__init__(name="tweet_generator_tools")
         self.twitter_handler = TwitterHandler()
 
-        # Initialize OpenAI model
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        if not openai_api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment variables")
+        # Use provided model (from agent) or create a new one
+        if model:
+            self.model = model
+        else:
+            # Initialize OpenAI model for standalone use
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+            if not openai_api_key:
+                raise ValueError("OPENAI_API_KEY not found in environment variables")
 
-        # Initialize model params
-        model_params = {
-            "id": "gpt-4o",
-            "name": "TweetGenerator",
-            "temperature": 0.7,
-            "max_tokens": 280,
-            "api_key": openai_api_key,
-            "structured_outputs": False,
-        }
+            # Initialize model params
+            model_params = {
+                "id": "gpt-4o",
+                "name": "TweetGenerator",
+                "temperature": 0.7,
+                "max_tokens": 280,
+                "api_key": openai_api_key,
+                "structured_outputs": False,
+            }
 
-        # Add base_url only if it's set
-        openai_base_url = os.getenv("OPENAI_BASE_URL")
-        if openai_base_url:
-            model_params["base_url"] = openai_base_url
+            # Add base_url only if it's set
+            openai_base_url = os.getenv("OPENAI_BASE_URL")
+            if openai_base_url and openai_base_url.strip():
+                model_params["base_url"] = openai_base_url
 
-        self.model = OpenAIChat(**model_params)
+            self.model = OpenAIChat(**model_params)
 
         # Register only the tweet generation function
         self.register(self.generate_tweet)
 
-    def generate_tweet(self, personality: str, topic: str = None) -> str:
+    def generate_tweet(self, personality: str, topic: str = None) -> Tuple[bool, str]:
         """
-        Generate a tweet using the model based on personality and topic.
+        Generate a tweet using the model based on personality and topic, and post it.
 
         Args:
             personality (str): The personality/role to use for tweet generation
             topic (str, optional): Specific topic to tweet about
         Returns:
-            str: The generated tweet content
+            tuple: (success: bool, message: str) - Success status and response message
         """
         try:
             # Generate prompt messages
@@ -103,11 +108,13 @@ class TweetGeneratorTools(Toolkit):
                 )
                 return self.generate_tweet(personality, topic)
 
-            return tweet_content
+            # Post the generated tweet
+            logger.info(f"Posting generated tweet: {tweet_content}")
+            return self.post_tweet(tweet_content)
 
         except Exception as error:
-            logger.error(f"Error generating tweet: {error}")
-            raise error
+            logger.error(f"Error generating/posting tweet: {error}")
+            return False, str(error)
 
     def post_tweet(self, tweet_content: str) -> Tuple[bool, str]:
         """
@@ -119,7 +126,10 @@ class TweetGeneratorTools(Toolkit):
             tuple: (success: bool, message: str) - Success status and response message
         """
         try:
-            return self.twitter_handler.post_tweet(tweet_content)
+            success, response = self.twitter_handler.post_tweet(tweet_content)
+            if success:
+                return True, tweet_content
+            return False, response
         except Exception as error:
             logger.error(f"Error posting tweet: {error}")
             return False, str(error)
