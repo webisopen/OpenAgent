@@ -9,6 +9,7 @@ from phi.model.google import Gemini
 
 from .finance import finance_agent
 from .feed import feed_agent
+from .twitter import twitter_agent
 
 
 class UnsupportedModel(Exception):
@@ -42,7 +43,7 @@ def build_model(model: str) -> Model:
 
 def build_agent_team(model: str) -> Agent:
     return Agent(
-        team=[finance_agent, feed_agent],
+        team=[finance_agent, feed_agent, twitter_agent],
         model=build_model(model),
     )
 
