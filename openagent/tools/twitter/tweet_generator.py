@@ -16,7 +16,7 @@ load_dotenv()
 SYSTEM_PROMPT = """You are a creative tweet writer who can adapt to different personalities and styles.
 Your task is to generate engaging tweets that match the given personality and topic.
 ALWAYS include relevant hashtags in your tweets to increase visibility and engagement.
-Format your response as a single tweet, no additional text or explanations."""
+Format your response exactly like a real human tweet - no quotes, no additional text."""
 
 TWEET_REQUIREMENTS = """
 Requirements for the tweet:
@@ -25,7 +25,8 @@ Requirements for the tweet:
 3. MUST include at least 2-3 relevant hashtags
 4. Make it engaging and shareable
 5. Match the tone to the specified personality
-6. Format as a single tweet, no additional text
+6. Format exactly like a real human tweet
+7. No quotes or other formatting - just the tweet text
 """
 
 
@@ -39,15 +40,22 @@ class TweetGeneratorTools(Toolkit):
         if not openai_api_key:
             raise ValueError("OPENAI_API_KEY not found in environment variables")
 
-        self.model = OpenAIChat(
-            id="gpt-4",
-            name="TweetGenerator",
-            temperature=0.7,
-            max_tokens=280,
-            api_key=openai_api_key,
-            base_url=os.getenv("OPENAI_BASE_URL"),
-            structured_outputs=False,
-        )
+        # Initialize model params
+        model_params = {
+            "id": "gpt-4o",
+            "name": "TweetGenerator",
+            "temperature": 0.7,
+            "max_tokens": 280,
+            "api_key": openai_api_key,
+            "structured_outputs": False,
+        }
+
+        # Add base_url only if it's set
+        openai_base_url = os.getenv("OPENAI_BASE_URL")
+        if openai_base_url:
+            model_params["base_url"] = openai_base_url
+
+        self.model = OpenAIChat(**model_params)
 
         # Register only the tweet generation function
         self.register(self.generate_tweet)
@@ -76,7 +84,11 @@ class TweetGeneratorTools(Toolkit):
 
             # Generate tweet using the model
             response = self.model.invoke(messages=messages)
-            tweet_content = str(response).strip()
+            # Extract content from the response
+            if hasattr(response, "choices") and len(response.choices) > 0:
+                tweet_content = response.choices[0].message.content.strip()
+            else:
+                tweet_content = str(response).strip()
 
             # Validate tweet length and hashtag presence
             if len(tweet_content) > 280:
