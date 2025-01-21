@@ -10,9 +10,7 @@ class Model(Base):
     name = Column(String, nullable=False, unique=True)
     description = Column(Text)
     capability_score = Column(Float, nullable=False)  # Model capability score
-    capabilities = Column(
-        String
-    )  # Stores ModelCapability list as comma-separated string
+    capabilities = Column(String)  # Stores ModelCapability list as comma-separated string
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
         DateTime,

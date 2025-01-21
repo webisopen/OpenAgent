@@ -27,9 +27,7 @@ class TestTwitterTools(unittest.TestCase):
                 missing_vars.append(var)
 
         if missing_vars:
-            self.fail(
-                f"Missing required environment variables: {', '.join(missing_vars)}"
-            )
+            self.fail(f"Missing required environment variables: {', '.join(missing_vars)}")
 
     def test_tweet_generation_and_posting(self):
         """Test tweet generation with personality and posting"""
@@ -42,27 +40,17 @@ class TestTwitterTools(unittest.TestCase):
 
         try:
             # Generate and post tweet
-            print(
-                f"\nGenerating and posting tweet as {personality} about {description}..."
-            )
-            success, tweet_content = self.tweet_tools.generate_tweet(
-                personality=personality, description=description
-            )
+            print(f"\nGenerating and posting tweet as {personality} about {description}...")
+            success, tweet_content = self.tweet_tools.generate_tweet(personality=personality, description=description)
 
             # Validate the result
-            self.assertTrue(
-                success, f"Tweet generation/posting failed: {tweet_content}"
-            )
+            self.assertTrue(success, f"Tweet generation/posting failed: {tweet_content}")
             print("✓ Tweet generated and posted successfully")
             print(f"Tweet content: {tweet_content}")
 
             # Validate tweet content
-            self.assertTrue(
-                "#" in tweet_content, "Tweet should contain at least one hashtag"
-            )
-            found_terms = [
-                term for term in expected_terms if term.lower() in tweet_content.lower()
-            ]
+            self.assertTrue("#" in tweet_content, "Tweet should contain at least one hashtag")
+            found_terms = [term for term in expected_terms if term.lower() in tweet_content.lower()]
             self.assertTrue(
                 len(found_terms) > 0,
                 f"Tweet should contain at least one of {expected_terms}. Content: {tweet_content}",

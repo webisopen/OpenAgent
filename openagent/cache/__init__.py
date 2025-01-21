@@ -17,11 +17,7 @@ class RedisManager:
         """Initialize the Redis connection."""
         redis_url = os.getenv("REDIS_URL")
         if not redis_url:
-            redis_url = (
-                f"redis://{os.getenv('REDIS_HOST', 'localhost')}:"
-                f"{os.getenv('REDIS_PORT', 6379)}/"
-                f"{os.getenv('REDIS_DB', 0)}"
-            )
+            redis_url = f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', 6379)}/{os.getenv('REDIS_DB', 0)}"
 
         cls._client = Redis.from_url(redis_url, decode_responses=True)
 

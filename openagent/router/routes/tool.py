@@ -24,20 +24,14 @@ router = APIRouter(prefix="/tools", tags=["tools"])
         500: {"description": "Internal server error"},
     },
 )
-def list_tools(
-    page: int = 0, limit: int = 10, db: Session = Depends(get_db)
-) -> Union[ResponseModel[ToolListResponse], APIExceptionResponse]:
+def list_tools(page: int = 0, limit: int = 10, db: Session = Depends(get_db)) -> Union[ResponseModel[ToolListResponse], APIExceptionResponse]:
     try:
         total = db.query(Tool).count()
         tools = db.query(Tool).offset(page * limit).limit(limit).all()
         return ResponseModel(
             code=status.HTTP_200_OK,
-            data=ToolListResponse(
-                tools=[ToolResponse.model_validate(tool) for tool in tools], total=total
-            ),
+            data=ToolListResponse(tools=[ToolResponse.model_validate(tool) for tool in tools], total=total),
             message=f"Retrieved {len(tools)} tools out of {total}",
         )
     except Exception as error:
-        return APIExceptionResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error
-        )
+        return APIExceptionResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error)

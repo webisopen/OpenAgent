@@ -7,9 +7,7 @@ import sys
 from dotenv import load_dotenv
 
 # Add parent directory to path so we can import our models
-sys.path.append(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
 from openagent.database import Base
 from openagent.database import get_database_url

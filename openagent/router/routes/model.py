@@ -24,9 +24,7 @@ router = APIRouter(prefix="/models", tags=["models"])
         500: {"description": "Internal server error"},
     },
 )
-def list_models(
-    page: int = 0, limit: int = 10, db: Session = Depends(get_db)
-) -> Union[ResponseModel[ModelListResponse], APIExceptionResponse]:
+def list_models(page: int = 0, limit: int = 10, db: Session = Depends(get_db)) -> Union[ResponseModel[ModelListResponse], APIExceptionResponse]:
     try:
         total = db.query(Model).count()
         models = db.query(Model).offset(page * limit).limit(limit).all()
@@ -39,6 +37,4 @@ def list_models(
             message=f"Retrieved {len(models)} models out of {total}",
         )
     except Exception as error:
-        return APIExceptionResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error
-        )
+        return APIExceptionResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error)

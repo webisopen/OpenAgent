@@ -25,9 +25,7 @@ class CoinGeckoTools(Toolkit):
             A JSON-formatted string containing a list of tokens matching the search query.
         """
 
-        return requests.get(
-            f"{self.base_url}/search?query={name}", headers=self.headers
-        ).text
+        return requests.get(f"{self.base_url}/search?query={name}", headers=self.headers).text
 
     def fetch_token_price(self, name: str) -> str:
         """

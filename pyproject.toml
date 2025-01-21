@@ -2,7 +2,6 @@
 name = "openagent"
 version = "2.0.0"
 description = "OpenAgent is a framework for building AI applications leveraging the power of blockchains and RSS3 Network."
-readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
     "anthropic>=0.42.0",
@@ -27,4 +26,63 @@ dependencies = [
 ]
 
 [tool.poetry.group.dev.dependencies]
+black = "^24.10.0"
 ruff = "^0.9.1"
+
+[tool.ruff]
+line-length = 150
+indent-width = 4
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 7
+
+[tool.ruff.lint]
+select = [
+    "AIR",
+    "B",
+    "C90",
+    "E",
+    "F",
+    "FLY",
+    "FURB",
+    "I",
+    "N",
+    "PERF",
+    "RUF",
+    "SIM",
+    "UP",
+    "W"
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true

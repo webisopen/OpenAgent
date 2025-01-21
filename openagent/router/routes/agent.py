@@ -31,9 +31,7 @@ router = APIRouter(prefix="/agents", tags=["agents"])
 load_dotenv()
 
 
-def check_tool_configs(
-    tool_configs: List[ToolConfig], db: Session
-) -> Optional[APIExceptionResponse]:
+def check_tool_configs(tool_configs: List[ToolConfig], db: Session) -> Optional[APIExceptionResponse]:
     # check if the tool_names are unique
     tool_names = []
     for tool_config in tool_configs:
@@ -95,9 +93,7 @@ async def verify_wallet_auth(
         # Recover public key
         w3 = Web3()
         try:
-            recovered_address = w3.eth.account.recover_message(
-                encode_defunct(text=message), signature=sig_bytes
-            )
+            recovered_address = w3.eth.account.recover_message(encode_defunct(text=message), signature=sig_bytes)
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -105,12 +101,8 @@ async def verify_wallet_auth(
             )
 
         # Compare addresses
-        if to_checksum_address(recovered_address) != to_checksum_address(
-            wallet_address
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature"
-            )
+        if to_checksum_address(recovered_address) != to_checksum_address(wallet_address):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature")
 
         return wallet_address
 
@@ -172,9 +164,7 @@ def create_agent(
         )
     except Exception as error:
         db.rollback()
-        return APIExceptionResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error
-        )
+        return APIExceptionResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error)
 
 
 @router.get(
@@ -187,9 +177,7 @@ def create_agent(
         500: {"description": "Internal server error"},
     },
 )
-def list_agents(
-    page: int = 0, limit: int = 10, db: Session = Depends(get_db)
-) -> Union[ResponseModel[dict], APIExceptionResponse]:
+def list_agents(page: int = 0, limit: int = 10, db: Session = Depends(get_db)) -> Union[ResponseModel[dict], APIExceptionResponse]:
     try:
         total = db.query(Agent).count()
         agents = db.query(Agent).offset(page * limit).limit(limit).all()
@@ -202,9 +190,7 @@ def list_agents(
             message=f"Retrieved {len(agents)} agents out of {total}",
         )
     except Exception as error:
-        return APIExceptionResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error
-        )
+        return APIExceptionResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error)
 
 
 @router.get(
@@ -242,9 +228,7 @@ def get_agent(
             message="Agent retrieved successfully",
         )
     except Exception as error:
-        return APIExceptionResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error
-        )
+        return APIExceptionResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error)
 
 
 @router.put(
@@ -294,9 +278,7 @@ def update_agent(
         )
     except Exception as error:
         db.rollback()
-        return APIExceptionResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error
-        )
+        return APIExceptionResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error)
 
 
 @router.delete(
@@ -331,14 +313,10 @@ def delete_agent(
     try:
         db.delete(agent)
         db.commit()
-        return ResponseModel(
-            code=status.HTTP_200_OK, data=None, message="Agent deleted successfully"
-        )
+        return ResponseModel(code=status.HTTP_200_OK, data=None, message="Agent deleted successfully")
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.post(
@@ -513,9 +491,7 @@ def build_model(model: Model) -> AI_Model:
                 client_params={"base_url": os.getenv("ANTHROPIC_BASE_URL")},
             )
         case "google":
-            return Gemini(
-                id=model_id, client_params={"base_url": os.getenv("GOOGLE_BASE_URL")}
-            )
+            return Gemini(id=model_id, client_params={"base_url": os.getenv("GOOGLE_BASE_URL")})
         case "ollama":
             return Ollama(id=model_id, host=os.getenv("OLLAMA_BASE_URL"))
         case _:
@@ -528,17 +504,13 @@ def initialize_tool_executor(tool: Tool, model: Model) -> BaseTool:
     return get_tool_executor(tool, model_instance)
 
 
-def execute_tool_action(
-    tool_executor: BaseTool, agent: Agent, tool_config: ToolConfig
-) -> Tuple[bool, str]:
+def execute_tool_action(tool_executor: BaseTool, agent: Agent, tool_config: ToolConfig) -> Tuple[bool, str]:
     try:
         match tool_executor.name:
             case "tweet_generator":
                 return tool_executor.run(
                     personality=agent.personality,
-                    description=tool_config.description
-                    if tool_config.parameters
-                    else None,
+                    description=tool_config.description if tool_config.parameters else None,
                 )
             case _:
                 raise ValueError(f"Unsupported tool: {tool_executor.name}")

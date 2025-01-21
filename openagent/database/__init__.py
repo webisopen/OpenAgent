@@ -27,9 +27,7 @@ class DatabaseManager:
         cls._engine = create_engine(database_url)
 
         # Create session factory
-        cls._session_factory = sessionmaker(
-            autocommit=False, autoflush=False, bind=cls._engine
-        )
+        cls._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=cls._engine)
 
         # Run migrations
         alembic_cfg = Config("alembic.ini")

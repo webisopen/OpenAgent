@@ -79,9 +79,7 @@ class TweetGeneratorTools(BaseTool):
     def run(self, personality: str, description: str = None) -> Tuple[bool, str]:
         return self.generate_tweet(personality, description)
 
-    def generate_tweet(
-        self, personality: str, description: str = None
-    ) -> Tuple[bool, str]:
+    def generate_tweet(self, personality: str, description: str = None) -> Tuple[bool, str]:
         """
         Generate a tweet using the model based on personality and description, and post it.
 
@@ -115,15 +113,11 @@ class TweetGeneratorTools(BaseTool):
 
             # Validate tweet length and hashtag presence
             if len(tweet_content) > 280:
-                logger.warning(
-                    f"Generated tweet exceeds 280 characters, length: {len(tweet_content)}"
-                )
+                logger.warning(f"Generated tweet exceeds 280 characters, length: {len(tweet_content)}")
                 tweet_content = tweet_content[:277] + "..."
 
             if "#" not in tweet_content:
-                logger.warning(
-                    "Generated tweet does not contain hashtags, regenerating..."
-                )
+                logger.warning("Generated tweet does not contain hashtags, regenerating...")
                 return self.generate_tweet(personality, description)
 
             # Post the generated tweet

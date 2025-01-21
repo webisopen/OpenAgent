@@ -41,9 +41,7 @@ class ToolConfig(BaseModel):
     def model_dump(self, *args, **kwargs) -> dict:
         data = super().model_dump(*args, **kwargs)
         if data.get("parameters") and "trigger_type" in data["parameters"]:
-            data["parameters"]["trigger_type"] = data["parameters"][
-                "trigger_type"
-            ].value
+            data["parameters"]["trigger_type"] = data["parameters"]["trigger_type"].value
         return data
 
 
