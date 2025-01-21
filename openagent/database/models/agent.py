@@ -1,14 +1,19 @@
 import enum
+from typing import List
 
 from sqlalchemy import Column, Integer, String, DateTime, JSON, Enum
 from datetime import datetime, UTC
 
 from openagent.database.models.base import Base
+from openagent.tools import ToolConfig
 
 
-class AgentStatus(enum.Enum):
+class AgentStatus(str, enum.Enum):
     INACTIVE = "inactive"
     ACTIVE = "active"
+
+    def __str__(self):
+        return self.value
 
 
 class Agent(Base):
@@ -28,7 +33,10 @@ class Agent(Base):
     telegram = Column(String)
     website = Column(String)
     tool_configs = Column(JSON)
-    status = Column(Enum(AgentStatus), nullable=False)
+    status = Column(
+        Enum(AgentStatus, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
         DateTime,
@@ -36,3 +44,18 @@ class Agent(Base):
         onupdate=lambda: datetime.now(UTC),
         nullable=False,
     )
+
+    def __init__(self, *args, **kwargs):
+        if "status" in kwargs and isinstance(kwargs["status"], AgentStatus):
+            kwargs["status"] = kwargs["status"].value
+        super().__init__(*args, **kwargs)
+
+    @property
+    def tool_configs_list(self) -> List[ToolConfig]:
+        if not self.tool_configs:
+            return []
+        return [ToolConfig.model_validate(config) for config in self.tool_configs]
+
+    @tool_configs_list.setter
+    def tool_configs_list(self, configs: List[ToolConfig]):
+        self.tool_configs = [config.model_dump() for config in configs]

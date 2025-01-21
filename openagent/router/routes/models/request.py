@@ -1,13 +1,6 @@
 from typing import Optional, List
 from pydantic import BaseModel
-from openai.types.chat import ChatCompletionMessageParam
 from openagent.tools import ToolConfig
-
-
-# Create Chat Completion
-class CreateChatCompletionRequest(BaseModel):
-    model: str
-    messages: List[ChatCompletionMessageParam]
 
 
 # Create Agent
@@ -24,6 +17,9 @@ class CreateAgentRequest(BaseModel):
     telegram: Optional[str] = None
     website: Optional[str] = None
     tool_configs: Optional[List[ToolConfig]] = None
+
+    def get_tool_configs_data(self) -> List[dict]:
+        return [config.model_dump() for config in self.tool_configs]
 
 
 # Run Agent

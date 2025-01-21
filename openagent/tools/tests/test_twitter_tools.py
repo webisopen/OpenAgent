@@ -37,14 +37,16 @@ class TestTwitterTools(unittest.TestCase):
 
         # Test case for tweet generation and posting
         personality = "tech enthusiast"
-        topic = "AI and machine learning innovations"
+        description = "AI and machine learning innovations"
         expected_terms = ["AI", "tech", "machine learning", "innovation"]
 
         try:
             # Generate and post tweet
-            print(f"\nGenerating and posting tweet as {personality} about {topic}...")
+            print(
+                f"\nGenerating and posting tweet as {personality} about {description}..."
+            )
             success, tweet_content = self.tweet_tools.generate_tweet(
-                personality=personality, topic=topic
+                personality=personality, description=description
             )
 
             # Validate the result

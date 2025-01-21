@@ -1,5 +1,5 @@
 from typing import Optional, Generic, TypeVar, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from openagent.database.models.agent import AgentStatus
 from openagent.database.models.tool import ToolType
 from openagent.tools import ToolConfig
@@ -14,6 +14,8 @@ class ResponseModel(BaseModel, Generic[T]):
 
 
 class AgentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     description: Optional[str] = None
@@ -32,6 +34,8 @@ class AgentResponse(BaseModel):
 
 
 class AgentListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     agents: List[AgentResponse]
     total: int
 

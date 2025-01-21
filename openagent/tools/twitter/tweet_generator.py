@@ -1,11 +1,12 @@
 import logging
 import os
-from typing import Tuple, Optional
-from phi.tools import Toolkit
+from typing import Any, Dict, Tuple, Optional
 from phi.model.openai import OpenAIChat
 from phi.model.base import Model
 from phi.model.message import Message
 from dotenv import load_dotenv
+
+from openagent.tools import BaseTool
 from .twitter_handler import TwitterHandler
 
 # Configure logging
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 SYSTEM_PROMPT = """You are a creative tweet writer who can adapt to different personalities and styles.
-Your task is to generate engaging tweets that match the given personality and topic.
+Your task is to generate engaging tweets that match the given personality and description.
 ALWAYS include relevant hashtags in your tweets to increase visibility and engagement.
 Format your response exactly like a real human tweet - no quotes, no additional text."""
 
@@ -31,15 +32,13 @@ Requirements for the tweet:
 """
 
 
-class TweetGeneratorTools(Toolkit):
+class TweetGeneratorTools(BaseTool):
     def __init__(self, model: Optional[Model] = None):
-        super().__init__(name="tweet_generator_tools")
+        super().__init__(name="tweet_generator", model=model)
         self.twitter_handler = TwitterHandler()
 
         # Use provided model (from agent) or create a new one
-        if model:
-            self.model = model
-        else:
+        if not model:
             # Initialize OpenAI model for standalone use
             openai_api_key = os.getenv("OPENAI_API_KEY")
             if not openai_api_key:
@@ -47,7 +46,7 @@ class TweetGeneratorTools(Toolkit):
 
             # Initialize model params
             model_params = {
-                "id": "gpt-4o",
+                "id": "gpt-4",
                 "name": "TweetGenerator",
                 "temperature": 0.7,
                 "max_tokens": 280,
@@ -62,24 +61,43 @@ class TweetGeneratorTools(Toolkit):
 
             self.model = OpenAIChat(**model_params)
 
-        # Register only the tweet generation function
-        self.register(self.generate_tweet)
+        # Register the run method
+        self.register(self.run)
 
-    def generate_tweet(self, personality: str, topic: str = None) -> Tuple[bool, str]:
+    def validate_params(self, params: Dict[str, Any]) -> Tuple[bool, str]:
+        if "personality" not in params:
+            return False, "Missing required parameter: personality"
+
+        if not isinstance(params["personality"], str):
+            return False, "Parameter 'personality' must be a string"
+
+        if "description" in params and not isinstance(params["description"], str):
+            return False, "Parameter 'description' must be a string"
+
+        return True, ""
+
+    def run(self, personality: str, description: str = None) -> Tuple[bool, str]:
+        return self.generate_tweet(personality, description)
+
+    def generate_tweet(
+        self, personality: str, description: str = None
+    ) -> Tuple[bool, str]:
         """
-        Generate a tweet using the model based on personality and topic, and post it.
+        Generate a tweet using the model based on personality and description, and post it.
 
         Args:
             personality (str): The personality/role to use for tweet generation
-            topic (str, optional): Specific topic to tweet about
+            description (str, optional): Specific description to tweet about
         Returns:
             tuple: (success: bool, message: str) - Success status and response message
         """
         try:
             # Generate prompt messages
             user_prompt = f"Generate a tweet as {personality}."
-            if topic:
-                user_prompt += f" The tweet should be about: {topic}."
+
+            if description:
+                user_prompt += f" Its content is centered around: {description}."
+
             user_prompt += TWEET_REQUIREMENTS
 
             messages = [
@@ -106,7 +124,7 @@ class TweetGeneratorTools(Toolkit):
                 logger.warning(
                     "Generated tweet does not contain hashtags, regenerating..."
                 )
-                return self.generate_tweet(personality, topic)
+                return self.generate_tweet(personality, description)
 
             # Post the generated tweet
             logger.info(f"Posting generated tweet: {tweet_content}")
