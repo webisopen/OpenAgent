@@ -22,9 +22,13 @@ app = FastAPI(
     servers=(
         [
             {
-                "url": "https://agent.rss3.io",
-                "description": "Production",
-            }
+                "url": "http://localhost:8000",
+                "description": "Local",
+            },
+            {
+                "url": "https://openagent-oa-141022883942.us-central1.run.app",
+                "description": "Development",
+            },
         ]
     ),
 )
