@@ -25,7 +25,6 @@ class Settings(BaseSettings):
     ROOTDATA_API_KEY: Optional[str] = Field(default=None, description="RootData API Key. Info: https://www.rootdata.com/")
     COINGECKO_API_KEY: Optional[str] = Field(default=None, description="CoinGecko API Key. Info: https://www.coingecko.com/en/api/pricing")
     RSS3_DATA_API: str = Field(default="https://gi.rss3.io", description="RSS3 Data API URL")
-    RSS3_SEARCH_API: str = Field(default="https://devnet.rss3.io/search", description="RSS3 Search API URL")
 
     # Chainlit OAuth settings; either all fields are None or all are set
     CHAINLIT_AUTH_SECRET: Optional[str] = Field(default=None, description="Chainlit Auth Secret")
