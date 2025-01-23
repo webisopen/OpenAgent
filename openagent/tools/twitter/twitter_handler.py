@@ -1,6 +1,6 @@
 import os
+
 import tweepy
-from typing import Tuple
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,9 +22,9 @@ class TwitterHandler:
                 access_token_secret=os.getenv("TWITTER_ACCESS_TOKEN_SECRET"),
             )
         except Exception as e:
-            raise ValueError(f"Failed to initialize Twitter client: {str(e)}")
+            raise ValueError(f"Failed to initialize Twitter client: {e!s}") from e
 
-    def post_tweet(self, content: str) -> Tuple[bool, str]:
+    def post_tweet(self, content: str) -> tuple[bool, str]:
         """
         Post a tweet using the initialized client.
 

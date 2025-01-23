@@ -1,8 +1,9 @@
 import uvicorn
-from openagent.router.server import app
-from openagent.database import DatabaseManager
-from openagent.cache import RedisManager
 from dotenv import load_dotenv
+
+from openagent.cache import RedisManager
+from openagent.database import DatabaseManager
+from openagent.router.server import app
 
 
 def run():

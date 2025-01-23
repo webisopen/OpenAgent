@@ -1,15 +1,15 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from alembic.config import Config
-from alembic import command
 import os
-from typing import Optional, Generator
+from typing import Generator
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 
 class DatabaseManager:
     _instance = None
-    _engine: Optional[object] = None
-    _session_factory: Optional[sessionmaker] = None
+    _engine: object | None = None
+    _session_factory: sessionmaker | None = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -27,7 +27,9 @@ class DatabaseManager:
         cls._engine = create_engine(database_url)
 
         # Create session factory
-        cls._session_factory = sessionmaker(autocommit=False, autoflush=False, bind=cls._engine)
+        cls._session_factory = sessionmaker(
+            autocommit=False, autoflush=False, bind=cls._engine
+        )
 
         # Run migrations
         alembic_cfg = Config("alembic.ini")

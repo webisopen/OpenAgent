@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Enum
-from openagent.database.models.base import Base
-from datetime import datetime, UTC
 import enum
+from datetime import UTC, datetime
+
+from sqlalchemy import Column, DateTime, Enum, Integer, String, Text
+
+from openagent.database.models.base import Base
 
 
 class ToolType(enum.Enum):

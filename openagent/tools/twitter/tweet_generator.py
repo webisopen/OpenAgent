@@ -1,12 +1,14 @@
 import logging
 import os
-from typing import Any, Dict, Tuple, Optional
-from phi.model.openai import OpenAIChat
+from typing import Any
+
+from dotenv import load_dotenv
 from phi.model.base import Model
 from phi.model.message import Message
-from dotenv import load_dotenv
+from phi.model.openai import OpenAIChat
 
 from openagent.tools import BaseTool
+
 from .twitter_handler import TwitterHandler
 
 # Configure logging
@@ -33,7 +35,7 @@ Requirements for the tweet:
 
 
 class TweetGeneratorTools(BaseTool):
-    def __init__(self, model: Optional[Model] = None):
+    def __init__(self, model: Model | None = None):
         super().__init__(name="tweet_generator", model=model)
         self.twitter_handler = TwitterHandler()
 
@@ -64,7 +66,7 @@ class TweetGeneratorTools(BaseTool):
         # Register the run method
         self.register(self.run)
 
-    def validate_params(self, params: Dict[str, Any]) -> Tuple[bool, str]:
+    def validate_params(self, params: dict[str, Any]) -> tuple[bool, str]:
         if "personality" not in params:
             return False, "Missing required parameter: personality"
 
@@ -76,10 +78,12 @@ class TweetGeneratorTools(BaseTool):
 
         return True, ""
 
-    def run(self, personality: str, description: str = None) -> Tuple[bool, str]:
+    def run(self, personality: str, description: str | None = None) -> tuple[bool, str]:
         return self.generate_tweet(personality, description)
 
-    def generate_tweet(self, personality: str, description: str = None) -> Tuple[bool, str]:
+    def generate_tweet(
+        self, personality: str, description: str | None = None
+    ) -> tuple[bool, str]:
         """
         Generate a tweet using the model based on personality and description, and post it.
 
@@ -113,11 +117,15 @@ class TweetGeneratorTools(BaseTool):
 
             # Validate tweet length and hashtag presence
             if len(tweet_content) > 280:
-                logger.warning(f"Generated tweet exceeds 280 characters, length: {len(tweet_content)}")
+                logger.warning(
+                    f"Generated tweet exceeds 280 characters, length: {len(tweet_content)}"
+                )
                 tweet_content = tweet_content[:277] + "..."
 
             if "#" not in tweet_content:
-                logger.warning("Generated tweet does not contain hashtags, regenerating...")
+                logger.warning(
+                    "Generated tweet does not contain hashtags, regenerating..."
+                )
                 return self.generate_tweet(personality, description)
 
             # Post the generated tweet
@@ -128,7 +136,7 @@ class TweetGeneratorTools(BaseTool):
             logger.error(f"Error generating/posting tweet: {error}")
             return False, str(error)
 
-    def post_tweet(self, tweet_content: str) -> Tuple[bool, str]:
+    def post_tweet(self, tweet_content: str) -> tuple[bool, str]:
         """
         Post a tweet using the Twitter handler.
 

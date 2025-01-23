@@ -1,37 +1,39 @@
 import os
-import binascii
-from eth_utils import remove_0x_prefix, to_checksum_address
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Path
+from typing import Any
+
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, HTTPException, Path, status
+from phi.model.anthropic import Claude
+from phi.model.base import Model as AI_Model
+from phi.model.google import Gemini
+from phi.model.ollama import Ollama
+from phi.model.openai import OpenAIChat
 from sqlalchemy.orm import Session
-from typing import List, Optional, Tuple, Union, Dict, Any
+
+from openagent.database import get_db
 from openagent.database.models.agent import Agent, AgentStatus
 from openagent.database.models.model import Model
 from openagent.database.models.tool import Tool
+from openagent.router.error import APIExceptionResponse
+from openagent.router.routes.models.auth import Auth
 from openagent.router.routes.models.request import CreateAgentRequest
 from openagent.router.routes.models.response import (
+    AgentListResponse,
     AgentResponse,
     ResponseModel,
-    AgentListResponse,
 )
-from openagent.router.error import APIExceptionResponse
 from openagent.tools import BaseTool, ToolConfig, get_tool_executor
-from openagent.database import get_db
-from eth_account.messages import encode_defunct
-from web3 import Web3
-from typing import Annotated
-from phi.model.base import Model as AI_Model
-from phi.model.ollama import Ollama
-from phi.model.openai import OpenAIChat
-from phi.model.anthropic import Claude
-from phi.model.google import Gemini
-from dotenv import load_dotenv
+
+auth_handler = Auth()
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 load_dotenv()
 
 
-def check_tool_configs(tool_configs: List[ToolConfig], db: Session) -> Optional[APIExceptionResponse]:
+def check_tool_configs(
+    tool_configs: list[ToolConfig], db: Session
+) -> APIExceptionResponse | None:
     # check if the tool_names are unique
     tool_names = []
     for tool_config in tool_configs:
@@ -67,54 +69,6 @@ def check_tool_configs(tool_configs: List[ToolConfig], db: Session) -> Optional[
     return None
 
 
-async def verify_wallet_auth(
-    wallet_address: Annotated[str, Header()],
-    signature: Annotated[str, Header()],
-    nonce: Annotated[str, Header()],
-) -> str:
-    """Dependency function to verify wallet authentication"""
-    try:
-        # Create the message
-        message = f"Sign this message to authenticate with nonce: {nonce}"
-
-        # Decode signature
-        try:
-            sig_bytes = bytes.fromhex(remove_0x_prefix(signature))
-        except binascii.Error:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid signature format",
-            )
-
-        # Adjust v value in signature
-        if sig_bytes[64] >= 27:
-            sig_bytes = sig_bytes[:64] + bytes([sig_bytes[64] - 27])
-
-        # Recover public key
-        w3 = Web3()
-        try:
-            recovered_address = w3.eth.account.recover_message(encode_defunct(text=message), signature=sig_bytes)
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Failed to recover address: {str(e)}",
-            )
-
-        # Compare addresses
-        if to_checksum_address(recovered_address) != to_checksum_address(wallet_address):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature")
-
-        return wallet_address
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Authentication failed: {str(e)}",
-        )
-
-
 @router.post(
     "",
     response_model=ResponseModel[AgentResponse],
@@ -128,9 +82,9 @@ async def verify_wallet_auth(
 )
 def create_agent(
     request: CreateAgentRequest,
-    verified_address: str = Depends(verify_wallet_auth),
+    wallet_address: str = Depends(auth_handler.auth_wrapper),
     db: Session = Depends(get_db),
-) -> Union[ResponseModel[AgentResponse], APIExceptionResponse]:
+) -> ResponseModel[AgentResponse] | APIExceptionResponse:
     try:
         # check if the tool_configs are valid
         if error := check_tool_configs(request.tool_configs, db):
@@ -141,7 +95,7 @@ def create_agent(
             description=request.description,
             personality=request.personality,
             instruction=request.instruction,
-            wallet_address=verified_address,
+            wallet_address=wallet_address,
             token_image=request.token_image,
             ticker=request.ticker,
             contract_address=request.contract_address,
@@ -164,7 +118,9 @@ def create_agent(
         )
     except Exception as error:
         db.rollback()
-        return APIExceptionResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error)
+        return APIExceptionResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error
+        )
 
 
 @router.get(
@@ -177,7 +133,9 @@ def create_agent(
         500: {"description": "Internal server error"},
     },
 )
-def list_agents(page: int = 0, limit: int = 10, db: Session = Depends(get_db)) -> Union[ResponseModel[dict], APIExceptionResponse]:
+def list_agents(
+    page: int = 0, limit: int = 10, db: Session = Depends(get_db)
+) -> ResponseModel[dict] | APIExceptionResponse:
     try:
         total = db.query(Agent).count()
         agents = db.query(Agent).offset(page * limit).limit(limit).all()
@@ -190,7 +148,9 @@ def list_agents(page: int = 0, limit: int = 10, db: Session = Depends(get_db)) -
             message=f"Retrieved {len(agents)} agents out of {total}",
         )
     except Exception as error:
-        return APIExceptionResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error)
+        return APIExceptionResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error
+        )
 
 
 @router.get(
@@ -206,9 +166,9 @@ def list_agents(page: int = 0, limit: int = 10, db: Session = Depends(get_db)) -
 )
 def get_agent(
     agent_id: int,
-    verified_address: str = Depends(verify_wallet_auth),
+    wallet_address: str = Depends(auth_handler.auth_wrapper),
     db: Session = Depends(get_db),
-) -> Union[ResponseModel[AgentResponse], APIExceptionResponse]:
+) -> ResponseModel[AgentResponse] | APIExceptionResponse:
     try:
         agent = db.query(Agent).filter(Agent.id == agent_id).first()
         if not agent:
@@ -217,7 +177,7 @@ def get_agent(
                 error=f"Agent with ID {agent_id} not found",
             )
 
-        if agent.wallet_address.lower() != verified_address.lower():
+        if agent.wallet_address.lower() != wallet_address.lower():
             return APIExceptionResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 error="Not authorized to query this agent",
@@ -228,7 +188,9 @@ def get_agent(
             message="Agent retrieved successfully",
         )
     except Exception as error:
-        return APIExceptionResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error)
+        return APIExceptionResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error
+        )
 
 
 @router.put(
@@ -245,9 +207,9 @@ def get_agent(
 def update_agent(
     agent_id: int,
     request: CreateAgentRequest,
-    verified_address: str = Depends(verify_wallet_auth),
+    wallet_address: str = Depends(auth_handler.auth_wrapper),
     db: Session = Depends(get_db),
-) -> Union[ResponseModel[AgentResponse], APIExceptionResponse]:
+) -> ResponseModel[AgentResponse] | APIExceptionResponse:
     try:
         agent = db.query(Agent).filter(Agent.id == agent_id).first()
         if not agent:
@@ -256,7 +218,7 @@ def update_agent(
                 error=f"Agent with ID {agent_id} not found",
             )
 
-        if agent.wallet_address.lower() != verified_address.lower():
+        if agent.wallet_address.lower() != wallet_address.lower():
             return APIExceptionResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 error="Not authorized to update this agent",
@@ -278,7 +240,9 @@ def update_agent(
         )
     except Exception as error:
         db.rollback()
-        return APIExceptionResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error)
+        return APIExceptionResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error
+        )
 
 
 @router.delete(
@@ -294,7 +258,7 @@ def update_agent(
 )
 def delete_agent(
     agent_id: int,
-    verified_address: str = Depends(verify_wallet_auth),
+    wallet_address: str = Depends(auth_handler.auth_wrapper),
     db: Session = Depends(get_db),
 ) -> ResponseModel:
     agent = db.query(Agent).filter(Agent.id == agent_id).first()
@@ -304,7 +268,7 @@ def delete_agent(
             detail=f"Agent with ID {agent_id} not found",
         )
 
-    if agent.wallet_address.lower() != verified_address.lower():
+    if agent.wallet_address.lower() != wallet_address.lower():
         return APIExceptionResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             error="Not authorized to delete this agent",
@@ -313,10 +277,14 @@ def delete_agent(
     try:
         db.delete(agent)
         db.commit()
-        return ResponseModel(code=status.HTTP_200_OK, data=None, message="Agent deleted successfully")
+        return ResponseModel(
+            code=status.HTTP_200_OK, data=None, message="Agent deleted successfully"
+        )
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        ) from e
 
 
 @router.post(
@@ -333,9 +301,9 @@ def delete_agent(
 )
 def run_agent(
     agent_id: int,
-    verified_address: str = Depends(verify_wallet_auth),
+    wallet_address: str = Depends(auth_handler.auth_wrapper),
     db: Session = Depends(get_db),
-) -> Union[ResponseModel[AgentResponse], APIExceptionResponse]:
+) -> ResponseModel[AgentResponse] | APIExceptionResponse:
     try:
         # get agent
         agent = db.query(Agent).filter(Agent.id == agent_id).first()
@@ -346,7 +314,7 @@ def run_agent(
             )
 
         # check if the user is authorized to run this agent
-        if agent.wallet_address.lower() != verified_address.lower():
+        if agent.wallet_address.lower() != wallet_address.lower():
             return APIExceptionResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 error="Not authorized to run this agent",
@@ -374,20 +342,7 @@ def run_agent(
 
 @router.post(
     "/{agent_id}/execute/{tool_name}",
-    response_model=ResponseModel[Dict[str, Any]],
-    summary="Execute a specific tool",
-    description="Execute a specific tool of an agent with optional parameters",
-    responses={
-        200: {"description": "Successfully executed tool"},
-        400: {"description": "Tool not found in agent's configuration"},
-        403: {"description": "Not authorized to execute this agent's tool"},
-        404: {"description": "Agent not found"},
-        500: {"description": "Internal server error"},
-    },
-)
-@router.post(
-    "/{agent_id}/execute/{tool_name}",
-    response_model=ResponseModel[Dict[str, Any]],
+    response_model=ResponseModel[dict[str, Any]],
     summary="Execute a specific tool",
     description="Execute a specific tool of an agent with optional parameters",
     responses={
@@ -402,9 +357,9 @@ def run_agent(
 def execute_tool(
     agent_id: int,
     tool_name: str = Path(..., description="Name of the tool to execute"),
-    verified_address: str = Depends(verify_wallet_auth),
+    wallet_address: str = Depends(auth_handler.auth_wrapper),
     db: Session = Depends(get_db),
-) -> Union[ResponseModel[Dict[str, Any]], APIExceptionResponse]:
+) -> ResponseModel[dict[str, Any]] | APIExceptionResponse:
     try:
         # get agent
         agent = db.query(Agent).filter(Agent.id == agent_id).first()
@@ -415,7 +370,7 @@ def execute_tool(
             )
 
         # check if the user is authorized to execute this agent's tool
-        if agent.wallet_address.lower() != verified_address.lower():
+        if agent.wallet_address.lower() != wallet_address.lower():
             return APIExceptionResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 error="Not authorized to execute this agent's tool",
@@ -469,7 +424,7 @@ def execute_tool(
         )
 
 
-def get_tool_and_model(tool_config: ToolConfig, db: Session) -> Tuple[Tool, Model]:
+def get_tool_and_model(tool_config: ToolConfig, db: Session) -> tuple[Tool, Model]:
     tool = db.query(Tool).filter(Tool.id == tool_config.tool_id).first()
     model = db.query(Model).filter(Model.id == tool_config.model_id).first()
 
@@ -491,7 +446,9 @@ def build_model(model: Model) -> AI_Model:
                 client_params={"base_url": os.getenv("ANTHROPIC_BASE_URL")},
             )
         case "google":
-            return Gemini(id=model_id, client_params={"base_url": os.getenv("GOOGLE_BASE_URL")})
+            return Gemini(
+                id=model_id, client_params={"base_url": os.getenv("GOOGLE_BASE_URL")}
+            )
         case "ollama":
             return Ollama(id=model_id, host=os.getenv("OLLAMA_BASE_URL"))
         case _:
@@ -504,16 +461,20 @@ def initialize_tool_executor(tool: Tool, model: Model) -> BaseTool:
     return get_tool_executor(tool, model_instance)
 
 
-def execute_tool_action(tool_executor: BaseTool, agent: Agent, tool_config: ToolConfig) -> Tuple[bool, str]:
+def execute_tool_action(
+    tool_executor: BaseTool, agent: Agent, tool_config: ToolConfig
+) -> tuple[bool, str]:
     try:
         match tool_executor.name:
             case "tweet_generator":
                 return tool_executor.run(
                     personality=agent.personality,
-                    description=tool_config.description if tool_config.parameters else None,
+                    description=tool_config.description
+                    if tool_config.parameters
+                    else None,
                 )
             case _:
                 raise ValueError(f"Unsupported tool: {tool_executor.name}")
 
     except Exception as e:
-        return False, f"Tool execution failed: {str(e)}"
+        return False, f"Tool execution failed: {e!s}"

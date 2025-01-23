@@ -1,15 +1,14 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-from typing import Union
 
+from openagent.database import get_db
 from openagent.database.models.model import Model
+from openagent.router.error import APIExceptionResponse
 from openagent.router.routes.models.response import (
-    ModelResponse,
     ModelListResponse,
+    ModelResponse,
     ResponseModel,
 )
-from openagent.router.error import APIExceptionResponse
-from openagent.database import get_db
 
 router = APIRouter(prefix="/models", tags=["models"])
 
@@ -24,7 +23,9 @@ router = APIRouter(prefix="/models", tags=["models"])
         500: {"description": "Internal server error"},
     },
 )
-def list_models(page: int = 0, limit: int = 10, db: Session = Depends(get_db)) -> Union[ResponseModel[ModelListResponse], APIExceptionResponse]:
+def list_models(
+    page: int = 0, limit: int = 10, db: Session = Depends(get_db)
+) -> ResponseModel[ModelListResponse] | APIExceptionResponse:
     try:
         total = db.query(Model).count()
         models = db.query(Model).offset(page * limit).limit(limit).all()
@@ -37,4 +38,6 @@ def list_models(page: int = 0, limit: int = 10, db: Session = Depends(get_db)) -
             message=f"Retrieved {len(models)} models out of {total}",
         )
     except Exception as error:
-        return APIExceptionResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error)
+        return APIExceptionResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, error=error
+        )

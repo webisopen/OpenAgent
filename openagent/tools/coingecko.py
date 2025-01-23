@@ -1,13 +1,13 @@
 import json
-
-import requests
 from os import environ
+from typing import ClassVar
+import requests
 from phi.tools import Toolkit
 
 
 class CoinGeckoTools(Toolkit):
-    base_url = "https://pro-api.coingecko.com/api/v3"
-    headers = {"x-cg-pro-api-key": environ.get("COINGECKO_API_KEY")}
+    base_url: ClassVar[str] = "https://pro-api.coingecko.com/api/v3"
+    headers: ClassVar[dict] = {"x-cg-pro-api-key": environ.get("COINGECKO_API_KEY")}
 
     def __init__(self):
         super().__init__(name="coingecko_tools")
@@ -25,7 +25,9 @@ class CoinGeckoTools(Toolkit):
             A JSON-formatted string containing a list of tokens matching the search query.
         """
 
-        return requests.get(f"{self.base_url}/search?query={name}", headers=self.headers).text
+        return requests.get(
+            f"{self.base_url}/search?query={name}", headers=self.headers
+        ).text
 
     def fetch_token_price(self, name: str) -> str:
         """

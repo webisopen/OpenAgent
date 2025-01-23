@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, Text, Float, DateTime
+from datetime import UTC, datetime
+
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+
 from openagent.database.models.base import Base
-from datetime import datetime, UTC
 
 
 class Model(Base):
@@ -10,7 +12,9 @@ class Model(Base):
     name = Column(String, nullable=False, unique=True)
     description = Column(Text)
     capability_score = Column(Float, nullable=False)  # Model capability score
-    capabilities = Column(String)  # Stores ModelCapability list as comma-separated string
+    capabilities = Column(
+        String
+    )  # Stores ModelCapability list as comma-separated string
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
         DateTime,

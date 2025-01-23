@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Tuple, Optional
 from enum import Enum
-from phi.tools import Toolkit
+from typing import Any
+
 from phi.model.base import Model
+from phi.tools import Toolkit
 from pydantic import BaseModel, ConfigDict
 
 from openagent.database.models.tool import Tool
@@ -17,8 +18,8 @@ class TriggerType(Enum):
 class ToolParameters(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     trigger_type: TriggerType
-    schedule: Optional[str] = None  # cron, such as "0 */2 * * *"
-    auth: Optional[Dict[str, Any]] = None
+    schedule: str | None = None  # cron, such as "0 */2 * * *"
+    auth: dict[str, Any] | None = None
 
     def validate_schedule(self):
         if self.trigger_type == TriggerType.SCHEDULED and not self.schedule:
@@ -29,10 +30,10 @@ class ToolConfig(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     tool_id: int
     model_id: int
-    parameters: Optional[ToolParameters] = None
+    parameters: ToolParameters | None = None
 
     def validate_parameters(self):
         if self.parameters:
@@ -41,17 +42,19 @@ class ToolConfig(BaseModel):
     def model_dump(self, *args, **kwargs) -> dict:
         data = super().model_dump(*args, **kwargs)
         if data.get("parameters") and "trigger_type" in data["parameters"]:
-            data["parameters"]["trigger_type"] = data["parameters"]["trigger_type"].value
+            data["parameters"]["trigger_type"] = data["parameters"][
+                "trigger_type"
+            ].value
         return data
 
 
 class BaseTool(Toolkit, ABC):
-    def __init__(self, name: str, model: Optional[Model] = None):
+    def __init__(self, name: str, model: Model | None = None):
         super().__init__(name=name)
         self.model = model
 
     @abstractmethod
-    def run(self, **kwargs) -> Tuple[bool, Any]:
+    def run(self, **kwargs) -> tuple[bool, Any]:
         """
         execute the tool
 
@@ -64,7 +67,7 @@ class BaseTool(Toolkit, ABC):
         pass
 
     @abstractmethod
-    def validate_params(self, params: Dict[str, Any]) -> Tuple[bool, str]:
+    def validate_params(self, params: dict[str, Any]) -> tuple[bool, str]:
         """
         validate the input parameters
 
@@ -91,7 +94,7 @@ def get_tool_executor(tool: Tool, model: Model) -> BaseTool:
 __all__ = [
     "BaseTool",
     "ToolConfig",
-    "TriggerType",
     "ToolParameters",
+    "TriggerType",
     "get_tool_executor",
 ]

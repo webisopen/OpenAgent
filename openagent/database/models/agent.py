@@ -1,8 +1,6 @@
 import enum
-from typing import List
-
-from sqlalchemy import Column, Integer, String, DateTime, JSON, Enum
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+from sqlalchemy import JSON, Column, DateTime, Enum, Integer, String
 
 from openagent.database.models.base import Base
 from openagent.tools import ToolConfig
@@ -51,11 +49,11 @@ class Agent(Base):
         super().__init__(*args, **kwargs)
 
     @property
-    def tool_configs_list(self) -> List[ToolConfig]:
+    def tool_configs_list(self) -> list[ToolConfig]:
         if not self.tool_configs:
             return []
         return [ToolConfig.model_validate(config) for config in self.tool_configs]
 
     @tool_configs_list.setter
-    def tool_configs_list(self, configs: List[ToolConfig]):
+    def tool_configs_list(self, configs: list[ToolConfig]):
         self.tool_configs = [config.model_dump() for config in configs]
