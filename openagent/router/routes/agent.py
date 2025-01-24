@@ -104,6 +104,7 @@ def create_agent(
             telegram=request.telegram,
             website=request.website,
             tool_configs=request.get_tool_configs_data(),
+            type=request.type,
             status=AgentStatus.INACTIVE,  # default status
         )
 

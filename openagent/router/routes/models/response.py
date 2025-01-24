@@ -1,8 +1,9 @@
+from datetime import datetime
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
-from openagent.database.models.agent import AgentStatus
+from openagent.database.models.agent import AgentStatus, AgentType
 from openagent.database.models.tool import ToolType
 from openagent.tools import ToolConfig
 
@@ -32,7 +33,10 @@ class AgentResponse(BaseModel):
     telegram: str | None = None
     website: str | None = None
     tool_configs: list[ToolConfig] | None = None
+    type: AgentType
     status: AgentStatus
+    created_at: datetime
+    updated_at: datetime
 
 
 class AgentListResponse(BaseModel):

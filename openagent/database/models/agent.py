@@ -14,6 +14,16 @@ class AgentStatus(str, enum.Enum):
         return self.value
 
 
+class AgentType(str, enum.Enum):
+    IP = "IP"
+    DEFI = "DeFi"
+    DESCI = "DeSci"
+    OTHERS = "Others"
+
+    def __str__(self):
+        return self.value
+
+
 class Agent(Base):
     __tablename__ = "agents"
 
@@ -35,6 +45,10 @@ class Agent(Base):
         Enum(AgentStatus, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
     )
+    type = Column(
+        Enum(AgentType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
         DateTime,
@@ -44,6 +58,8 @@ class Agent(Base):
     )
 
     def __init__(self, *args, **kwargs):
+        if "type" in kwargs and isinstance(kwargs["type"], AgentType):
+            kwargs["type"] = kwargs["type"].value
         if "status" in kwargs and isinstance(kwargs["status"], AgentStatus):
             kwargs["status"] = kwargs["status"].value
         super().__init__(*args, **kwargs)

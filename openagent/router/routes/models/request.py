@@ -1,3 +1,4 @@
+from openagent.database.models.agent import AgentType
 from pydantic import BaseModel
 
 from openagent.tools import ToolConfig
@@ -16,6 +17,7 @@ class CreateAgentRequest(BaseModel):
     twitter: str | None = None
     telegram: str | None = None
     website: str | None = None
+    type: AgentType
     tool_configs: list[ToolConfig] | None = None
 
     def get_tool_configs_data(self) -> list[dict]:

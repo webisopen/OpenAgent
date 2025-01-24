@@ -121,6 +121,12 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column(
+            "type",
+            postgresql.ENUM("IP", "DeFi", "DeSci", "Others", name="agent_type"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
             "created_at",
             postgresql.TIMESTAMP(timezone=True),
             server_default=sa.text("CURRENT_TIMESTAMP"),
