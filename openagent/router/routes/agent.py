@@ -2,7 +2,8 @@ import os
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, status, Body
+from openagent.tools.tool_factory import get_tool_executor
 from phi.model.anthropic import Claude
 from phi.model.base import Model as AI_Model
 from phi.model.google import Gemini
@@ -23,7 +24,7 @@ from openagent.router.routes.models.response import (
     PublicAgentResponse,
     ResponseModel,
 )
-from openagent.tools import BaseTool, ToolConfig, get_tool_executor
+from openagent.tools import BaseTool, ToolConfig, ToolParameters
 
 auth_handler = Auth()
 
@@ -140,11 +141,17 @@ def list_agents(
 ) -> ResponseModel[dict] | APIExceptionResponse:
     try:
         total = db.query(Agent).count()
-        agents = db.query(Agent).order_by(Agent.id.desc()).offset(page * limit).limit(limit).all()
+        agents = (
+            db.query(Agent)
+            .order_by(Agent.id.desc())
+            .offset(page * limit)
+            .limit(limit)
+            .all()
+        )
         return ResponseModel(
             code=status.HTTP_200_OK,
             data=AgentListResponse(
-                agents=[PublicAgentResponse.model_validate(agent) for agent in agents], 
+                agents=[PublicAgentResponse.model_validate(agent) for agent in agents],
                 total=total,
             ),
             message=f"Retrieved {len(agents)} agents out of {total}",
@@ -359,6 +366,9 @@ def run_agent(
 def execute_tool(
     agent_id: int,
     tool_name: str = Path(..., description="Name of the tool to execute"),
+    input: dict[str, Any] = Body(
+        default={}, description="Input parameters for the tool"
+    ),
     wallet_address: str = Depends(auth_handler.auth_wrapper),
     db: Session = Depends(get_db),
 ) -> ResponseModel[dict[str, Any]] | APIExceptionResponse:
@@ -402,20 +412,20 @@ def execute_tool(
         tool, model = get_tool_and_model(tool_config, db)
 
         # initialize the tool
-        tool_executor = initialize_tool_executor(tool, model)
+        tool_executor = initialize_tool_executor(agent, tool, model, tool_config)
 
         # execute the tool
-        success, result = execute_tool_action(tool_executor, agent, tool_config)
+        success, result = execute_tool_action(tool_executor, input)
 
         if not success:
             return APIExceptionResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                error=result,
+                error="Tool execution failed",
             )
 
         return ResponseModel(
             code=status.HTTP_200_OK,
-            data=None,
+            data=result,
             message=f"Tool {tool_name} executed successfully",
         )
 
@@ -457,24 +467,22 @@ def build_model(model: Model) -> AI_Model:
             raise ValueError(f"Unsupported model: {model}")
 
 
-def initialize_tool_executor(tool: Tool, model: Model) -> BaseTool:
+def initialize_tool_executor(agent: Agent, tool: Tool, model: Model, tool_config: ToolConfig) -> BaseTool:
     model_instance = build_model(model)
-
-    return get_tool_executor(tool, model_instance)
+            
+    return get_tool_executor(agent, tool, model_instance, tool_config)
 
 
 def execute_tool_action(
-    tool_executor: BaseTool, agent: Agent, tool_config: ToolConfig
-) -> tuple[bool, str]:
+    tool_executor: BaseTool,
+    input: dict[str, Any],
+) -> tuple[bool, Any]:
     try:
         match tool_executor.name:
             case "tweet_generator":
-                return tool_executor.run(
-                    personality=agent.personality,
-                    description=tool_config.description
-                    if tool_config.parameters
-                    else None,
-                )
+                return tool_executor.run()
+            case "airdrop_agent":
+                return tool_executor.run(input)
             case _:
                 raise ValueError(f"Unsupported tool: {tool_executor.name}")
 

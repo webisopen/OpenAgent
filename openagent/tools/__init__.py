@@ -1,33 +1,45 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any
-
+from typing import Any, Dict
 from phi.model.base import Model
 from phi.tools import Toolkit
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
-from openagent.database.models.tool import Tool
-
-
+    
 class TriggerType(Enum):
     SCHEDULED = "scheduled"
     AUTO = "auto"
     Manual = "manual"
-
+    
+    def __str__(self) -> str:
+        return self.value
 
 class ToolParameters(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        arbitrary_types_allowed=True,
+        json_encoders={TriggerType: lambda v: v.value}
+    )
+   
     trigger_type: TriggerType
     schedule: str | None = None  # cron, such as "0 */2 * * *"
-    auth: dict[str, Any] | None = None
+    config: dict | None = None
 
     def validate_schedule(self):
         if self.trigger_type == TriggerType.SCHEDULED and not self.schedule:
             raise ValueError("Schedule must be set when trigger_type is SCHEDULED")
-
+        
+    def model_dump(self, *args, **kwargs) -> dict:
+        # Add custom serialization for TriggerType
+        data = super().model_dump(*args, **kwargs)
+        data['trigger_type'] = self.trigger_type.value
+        return data
 
 class ToolConfig(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        arbitrary_types_allowed=True
+    )
 
     name: str
     description: str | None = None
@@ -39,12 +51,34 @@ class ToolConfig(BaseModel):
         if self.parameters:
             self.parameters.validate_schedule()
 
+
     def model_dump(self, *args, **kwargs) -> dict:
-        data = super().model_dump(*args, **kwargs)
-        if data.get("parameters") and "trigger_type" in data["parameters"]:
-            data["parameters"]["trigger_type"] = data["parameters"][
-                "trigger_type"
-            ].value
+        data = {
+            "name": self.name,
+            "description": self.description,
+            "tool_id": self.tool_id,
+            "model_id": self.model_id,
+        }
+        
+        if self.parameters:
+            data["parameters"] = self.parameters.model_dump()
+            
+        return data
+
+class TwitterToolParameters(ToolParameters):
+    model_config = ConfigDict(
+        from_attributes=True,
+        arbitrary_types_allowed=True
+    )
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_twitter_config(cls, data: Dict) -> Dict:
+        if isinstance(data, dict) and "config" in data and isinstance(data["config"], dict):
+            data["config"] = {
+                "access_token": data["config"].get("access_token"),
+                "access_token_secret": data["config"].get("access_token_secret")
+            }
         return data
 
 
@@ -79,22 +113,10 @@ class BaseTool(Toolkit, ABC):
         """
         pass
 
-
-def get_tool_executor(tool: Tool, model: Model) -> BaseTool:
-    match tool.name:
-        case "twitter.post":
-            from .twitter.tweet_generator import TweetGeneratorTools
-
-            return TweetGeneratorTools(model=model)
-        # TODO: add more tools
-        case _:
-            raise ValueError(f"Unsupported tool: {tool.name}")
-
-
 __all__ = [
     "BaseTool",
     "ToolConfig",
     "ToolParameters",
+    "TwitterToolParameters",
     "TriggerType",
-    "get_tool_executor",
 ]

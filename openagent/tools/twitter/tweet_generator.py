@@ -3,11 +3,12 @@ import os
 from typing import Any
 
 from dotenv import load_dotenv
+from openagent.database.models.agent import Agent
 from phi.model.base import Model
 from phi.model.message import Message
 from phi.model.openai import OpenAIChat
 
-from openagent.tools import BaseTool
+from openagent.tools import BaseTool, ToolConfig, TwitterToolParameters
 
 from .twitter_handler import TwitterHandler
 
@@ -35,9 +36,20 @@ Requirements for the tweet:
 
 
 class TweetGeneratorTools(BaseTool):
-    def __init__(self, model: Model | None = None):
+    def __init__(
+        self, 
+        agent: Agent, 
+        model: Model | None = None, 
+        tool_config: ToolConfig | None = None):
         super().__init__(name="tweet_generator", model=model)
-        self.twitter_handler = TwitterHandler()
+        if tool_config.parameters is None:
+            raise ValueError("TwitterToolParameters is required")
+            
+        self.agent = agent
+        self.tool_config = tool_config 
+        self.twitter_handler = TwitterHandler(
+            config=tool_config.parameters.config
+        )
 
         # Use provided model (from agent) or create a new one
         if not model:
@@ -78,12 +90,13 @@ class TweetGeneratorTools(BaseTool):
 
         return True, ""
 
-    def run(self, personality: str, description: str | None = None) -> tuple[bool, str]:
-        return self.generate_tweet(personality, description)
+    def run(self) -> tuple[bool, Any]:
+        success, tweet_content = self.generate_tweet()
+        if success:
+            return True, {"tweet": tweet_content}
+        return False, {"error": tweet_content}
 
-    def generate_tweet(
-        self, personality: str, description: str | None = None
-    ) -> tuple[bool, str]:
+    def generate_tweet(self) -> tuple[bool, Any]:
         """
         Generate a tweet using the model based on personality and description, and post it.
 
@@ -95,10 +108,10 @@ class TweetGeneratorTools(BaseTool):
         """
         try:
             # Generate prompt messages
-            user_prompt = f"Generate a tweet as {personality}."
+            user_prompt = f"Generate a tweet as {self.agent.personality}."
 
-            if description:
-                user_prompt += f" Its content is centered around: {description}."
+            if self.tool_config.description:
+                user_prompt += f" Its content is centered around: {self.tool_config.description}."
 
             user_prompt += TWEET_REQUIREMENTS
 
@@ -126,7 +139,7 @@ class TweetGeneratorTools(BaseTool):
                 logger.warning(
                     "Generated tweet does not contain hashtags, regenerating..."
                 )
-                return self.generate_tweet(personality, description)
+                return self.generate_tweet(self.personality, self.description)
 
             # Post the generated tweet
             logger.info(f"Posting generated tweet: {tweet_content}")
