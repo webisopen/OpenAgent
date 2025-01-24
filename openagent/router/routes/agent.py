@@ -20,6 +20,7 @@ from openagent.router.routes.models.request import CreateAgentRequest
 from openagent.router.routes.models.response import (
     AgentListResponse,
     AgentResponse,
+    PublicAgentResponse,
     ResponseModel,
 )
 from openagent.tools import BaseTool, ToolConfig, get_tool_executor
@@ -143,7 +144,7 @@ def list_agents(
         return ResponseModel(
             code=status.HTTP_200_OK,
             data=AgentListResponse(
-                agents=[AgentResponse.model_validate(agent) for agent in agents],
+                agents=[PublicAgentResponse.model_validate(agent) for agent in agents], 
                 total=total,
             ),
             message=f"Retrieved {len(agents)} agents out of {total}",

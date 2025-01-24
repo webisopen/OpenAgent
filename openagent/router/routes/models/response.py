@@ -38,11 +38,54 @@ class AgentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+class PublicToolConfigResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    description: str | None = None
+    tool_id: int
+    model_id: int
+    
+class PublicAgentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    description: str | None = None
+    personality: str | None = None
+    instruction: str | None = None
+    wallet_address: str
+    token_image: str | None = None
+    ticker: str
+    contract_address: str | None = None
+    pair_address: str | None = None
+    twitter: str | None = None
+    telegram: str | None = None
+    website: str | None = None
+    tool_configs: list[PublicToolConfigResponse] | None = None
+    type: AgentType
+    status: AgentStatus
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_orm(cls, obj):
+        if hasattr(obj, 'tool_configs') and obj.tool_configs:
+            obj.tool_configs = [
+                PublicToolConfigResponse(
+                    name=tc['name'],
+                    description=tc.get('description'),
+                    tool_id=tc['tool_id'],
+                    model_id=tc['model_id']
+                )
+                for tc in obj.tool_configs
+            ]
+        return super().from_orm(obj)
 
 class AgentListResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    agents: list[AgentResponse]
+    agents: list[PublicAgentResponse]
     total: int
 
 
