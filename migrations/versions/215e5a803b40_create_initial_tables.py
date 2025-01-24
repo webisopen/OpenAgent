@@ -151,3 +151,9 @@ def downgrade() -> None:
     # Drop enum types
     postgresql.ENUM(name="agent_status").drop(op.get_bind())
     postgresql.ENUM(name="tool_type").drop(op.get_bind())
+    postgresql.ENUM(name="agent_type").drop(op.get_bind())
+
+    # Drop sequences
+    op.execute("DROP SEQUENCE models_id_seq")
+    op.execute("DROP SEQUENCE tools_id_seq")
+    op.execute("DROP SEQUENCE agents_id_seq")
