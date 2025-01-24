@@ -140,7 +140,7 @@ def list_agents(
 ) -> ResponseModel[dict] | APIExceptionResponse:
     try:
         total = db.query(Agent).count()
-        agents = db.query(Agent).offset(page * limit).limit(limit).all()
+        agents = db.query(Agent).order_by(Agent.id.desc()).offset(page * limit).limit(limit).all()
         return ResponseModel(
             code=status.HTTP_200_OK,
             data=AgentListResponse(
