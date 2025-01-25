@@ -90,6 +90,8 @@ class AgentListResponse(BaseModel):
 
 
 class ModelResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     name: str
     description: str | None = None
@@ -103,6 +105,8 @@ class ModelListResponse(BaseModel):
 
 
 class ToolResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     name: str
     description: str | None = None
