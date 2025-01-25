@@ -237,7 +237,13 @@ def update_agent(
         if error := check_tool_configs(request.tool_configs, db):
             return error
 
-        for key, value in request.model_dump(exclude_unset=True).items():
+        # convert request to dict and handle tool_configs separately
+        update_data = request.model_dump(exclude_unset=True)
+        if "tool_configs" in update_data:
+            update_data["tool_configs"] = request.get_tool_configs_data()
+
+        # update agent attributes
+        for key, value in update_data.items():
             setattr(agent, key, value)
 
         db.commit()
