@@ -38,6 +38,7 @@ class AgentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
 class PublicToolConfigResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -45,7 +46,8 @@ class PublicToolConfigResponse(BaseModel):
     description: str | None = None
     tool_id: int
     model_id: int
-    
+
+
 class PublicAgentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -70,17 +72,18 @@ class PublicAgentResponse(BaseModel):
 
     @classmethod
     def from_orm(cls, obj):
-        if hasattr(obj, 'tool_configs') and obj.tool_configs:
+        if hasattr(obj, "tool_configs") and obj.tool_configs:
             obj.tool_configs = [
                 PublicToolConfigResponse(
-                    name=tc['name'],
-                    description=tc.get('description'),
-                    tool_id=tc['tool_id'],
-                    model_id=tc['model_id']
+                    name=tc["name"],
+                    description=tc.get("description"),
+                    tool_id=tc["tool_id"],
+                    model_id=tc["model_id"],
                 )
                 for tc in obj.tool_configs
             ]
         return super().from_orm(obj)
+
 
 class AgentListResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -91,7 +94,7 @@ class AgentListResponse(BaseModel):
 
 class ModelResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     name: str
     description: str | None = None
@@ -106,7 +109,7 @@ class ModelListResponse(BaseModel):
 
 class ToolResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     name: str
     description: str | None = None

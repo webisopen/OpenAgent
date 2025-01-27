@@ -8,7 +8,7 @@ from phi.model.base import Model
 from phi.model.message import Message
 from phi.model.openai import OpenAIChat
 
-from openagent.tools import BaseTool, ToolConfig, TwitterToolParameters
+from openagent.tools import BaseTool, ToolConfig
 
 from .twitter_handler import TwitterHandler
 
@@ -37,19 +37,18 @@ Requirements for the tweet:
 
 class TweetGeneratorTools(BaseTool):
     def __init__(
-        self, 
-        agent: Agent, 
-        model: Model | None = None, 
-        tool_config: ToolConfig | None = None):
+        self,
+        agent: Agent,
+        model: Model | None = None,
+        tool_config: ToolConfig | None = None,
+    ):
         super().__init__(name="tweet_generator", model=model)
         if tool_config.parameters is None:
             raise ValueError("TwitterToolParameters is required")
-            
+
         self.agent = agent
-        self.tool_config = tool_config 
-        self.twitter_handler = TwitterHandler(
-            config=tool_config.parameters.config
-        )
+        self.tool_config = tool_config
+        self.twitter_handler = TwitterHandler(config=tool_config.parameters.config)
 
         # Use provided model (from agent) or create a new one
         if not model:
@@ -111,7 +110,9 @@ class TweetGeneratorTools(BaseTool):
             user_prompt = f"Generate a tweet as {self.agent.personality}."
 
             if self.tool_config.description:
-                user_prompt += f" Its content is centered around: {self.tool_config.description}."
+                user_prompt += (
+                    f" Its content is centered around: {self.tool_config.description}."
+                )
 
             user_prompt += TWEET_REQUIREMENTS
 

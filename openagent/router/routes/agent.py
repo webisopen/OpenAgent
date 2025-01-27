@@ -24,7 +24,7 @@ from openagent.router.routes.models.response import (
     PublicAgentResponse,
     ResponseModel,
 )
-from openagent.tools import BaseTool, ToolConfig, ToolParameters
+from openagent.tools import BaseTool, ToolConfig
 
 auth_handler = Auth()
 
@@ -175,7 +175,7 @@ def list_agents(
 )
 def get_agent(
     agent_id: int,
-    wallet_address: str = Depends(auth_handler.auth_wrapper),
+    wallet_address: str | None = Depends(auth_handler.optional_auth_wrapper),
     db: Session = Depends(get_db),
 ) -> ResponseModel[AgentResponse] | APIExceptionResponse:
     try:
@@ -186,14 +186,16 @@ def get_agent(
                 error=f"Agent with ID {agent_id} not found",
             )
 
-        if agent.wallet_address.lower() != wallet_address.lower():
-            return APIExceptionResponse(
-                status_code=status.HTTP_403_FORBIDDEN,
-                error="Not authorized to query this agent",
-            )
+        # return full agent info if authenticated and wallet addresses match
+        if wallet_address and agent.wallet_address.lower() == wallet_address.lower():
+            response_data = AgentResponse.model_validate(agent)
+        else:
+            # return public info for unauthenticated users or non-owners
+            response_data = PublicAgentResponse.model_validate(agent)
+
         return ResponseModel(
             code=status.HTTP_200_OK,
-            data=AgentResponse.model_validate(agent),
+            data=AgentResponse.model_validate(response_data),
             message="Agent retrieved successfully",
         )
     except Exception as error:
@@ -356,6 +358,59 @@ def run_agent(
 
 
 @router.post(
+    "/{agent_id}/stop",
+    response_model=ResponseModel[AgentResponse],
+    summary="Stop an agent",
+    description="Stop an agent by setting its status to inactive",
+    responses={
+        200: {"description": "Successfully stopped agent"},
+        403: {"description": "Not authorized to stop this agent"},
+        404: {"description": "Agent not found"},
+        500: {"description": "Internal server error"},
+    },
+)
+def stop_agent(
+    agent_id: int,
+    wallet_address: str = Depends(auth_handler.auth_wrapper),
+    db: Session = Depends(get_db),
+) -> ResponseModel[AgentResponse] | APIExceptionResponse:
+    try:
+        # get agent
+        agent = db.query(Agent).filter(Agent.id == agent_id).first()
+        if not agent:
+            return APIExceptionResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                error=f"Agent with ID {agent_id} not found",
+            )
+
+        # check if the user is authorized to stop this agent
+        if agent.wallet_address.lower() != wallet_address.lower():
+            return APIExceptionResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                error="Not authorized to stop this agent",
+            )
+
+        # update the agent status to inactive
+        agent.status = AgentStatus.INACTIVE
+        db.commit()
+        db.refresh(agent)
+
+        # TODO: stop any running agent processes
+
+        return ResponseModel(
+            code=status.HTTP_200_OK,
+            data=AgentResponse.model_validate(agent),
+            message="Agent stopped successfully",
+        )
+    except Exception as error:
+        db.rollback()
+        return APIExceptionResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            error=error,
+        )
+
+
+@router.post(
     "/{agent_id}/execute/{tool_name}",
     response_model=ResponseModel[dict[str, Any]],
     summary="Execute a specific tool",
@@ -473,9 +528,11 @@ def build_model(model: Model) -> AI_Model:
             raise ValueError(f"Unsupported model: {model}")
 
 
-def initialize_tool_executor(agent: Agent, tool: Tool, model: Model, tool_config: ToolConfig) -> BaseTool:
+def initialize_tool_executor(
+    agent: Agent, tool: Tool, model: Model, tool_config: ToolConfig
+) -> BaseTool:
     model_instance = build_model(model)
-            
+
     return get_tool_executor(agent, tool, model_instance, tool_config)
 
 

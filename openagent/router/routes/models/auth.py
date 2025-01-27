@@ -9,7 +9,7 @@ from fastapi import HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from web3 import Web3
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 class Auth:
@@ -71,7 +71,25 @@ class Auth:
             )
 
     def auth_wrapper(
-        self, auth: HTTPAuthorizationCredentials = Security(security)
+        self, auth: HTTPAuthorizationCredentials | None = Security(security)
     ) -> str:
+        if not auth:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No authorization token provided",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
         payload = self.decode_token(auth.credentials)
         return payload["wallet_address"]
+
+    def optional_auth_wrapper(
+        self, auth: HTTPAuthorizationCredentials | None = Security(security)
+    ) -> str | None:
+        if not auth:
+            return None
+        try:
+            payload = self.decode_token(auth.credentials)
+            return payload["wallet_address"]
+        except HTTPException:
+            return None

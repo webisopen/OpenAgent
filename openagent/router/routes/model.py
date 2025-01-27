@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
 
 from openagent.database import get_db
@@ -24,11 +24,21 @@ router = APIRouter(prefix="/models", tags=["models"])
     },
 )
 def list_models(
-    page: int = 0, limit: int = 10, db: Session = Depends(get_db)
+    page: int = 0,
+    limit: int = 10,
+    ids: list[int] | None = Query(default=None),
+    db: Session = Depends(get_db),
 ) -> ResponseModel[ModelListResponse] | APIExceptionResponse:
     try:
-        total = db.query(Model).count()
-        models = db.query(Model).offset(page * limit).limit(limit).all()
+        query = db.query(Model)
+
+        # Add filter for model ids if provided
+        if ids:
+            query = query.filter(Model.id.in_(ids))
+
+        total = query.count()
+        models = query.offset(page * limit).limit(limit).all()
+
         return ResponseModel(
             code=status.HTTP_200_OK,
             data=ModelListResponse(
