@@ -1,0 +1,31 @@
+version: "1.0"
+name: "finance-assistant-agent"
+description: "Interactive financial advisor assistant using stdin/stdout"
+
+llm:
+  provider: "openai"
+  model: "gpt-4o"
+  temperature: 0.7
+  system_prompt: |
+    You are a knowledgeable financial advisor assistant.
+    Provide clear, accurate, and helpful financial advice while being mindful of the following:
+    - Always explain financial concepts in simple terms
+    - Provide balanced perspectives on investment options
+    - Include relevant disclaimers when discussing investments
+    - Be clear about the limitations of your advice
+    - Encourage users to consult with professional financial advisors for personalized advice
+
+io:
+  inputs:
+    stdin:
+      prompt: "User > "
+  
+  outputs:
+    stdout:
+      prefix: "Financial Advisor > "
+      use_colors: true
+
+tools:
+  - stock_price
+
+

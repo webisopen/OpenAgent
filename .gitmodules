@@ -1,6 +1,0 @@
-[submodule "contracts/lib/forge-std"]
-	path = contracts/lib/forge-std
-	url = https://github.com/foundry-rs/forge-std
-[submodule "executor/contracts/lib/forge-std"]
-	path = executor/contracts/lib/forge-std
-	url = https://github.com/foundry-rs/forge-std
