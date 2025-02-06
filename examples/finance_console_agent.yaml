@@ -10,7 +10,7 @@ instructions:
   - "Use concrete examples when explaining concepts"
   - "Avoid making specific investment recommendations"
   - "Consider user's risk tolerance when discussing options"
-debug_mode: false
+debug_mode: true
 markdown: true
 stateful: true
 

@@ -39,7 +39,7 @@ def start(file):
         return
 
     try:
-        agent = OpenAgent(file)
+        agent = OpenAgent.from_yaml_file(file)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

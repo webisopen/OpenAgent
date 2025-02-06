@@ -27,27 +27,52 @@ print_banner()
 
 
 class OpenAgent:
-    def __init__(self, config_path: str):
-        """Initialize OpenAgent with a yaml config file"""
+    @staticmethod
+    def from_yaml_file(config_path: str) -> "OpenAgent":
+        """Create an OpenAgent instance from a yaml config file
+        
+        Args:
+            config_path (str): Path to the yaml config file
+            
+        Returns:
+            OpenAgent: A new OpenAgent instance
+        """
+        agent = OpenAgent._from_init(config_path)
+        return agent
+        
+    @staticmethod 
+    def from_config(config: AgentConfig) -> "OpenAgent":
+        """Create an OpenAgent instance from an AgentConfig object
+        
+        Args:
+            config (AgentConfig): The configuration object
+            
+        Returns:
+            OpenAgent: A new OpenAgent instance
+        """
+        return OpenAgent(config)
+
+    @classmethod
+    def _from_init(cls, config_path: str) -> "OpenAgent":
+        """Private method to create instance from __init__ logic"""
         logger.info("Initializing OpenAgent...")
-        self.config = AgentConfig.from_yaml(config_path)
+        config = AgentConfig.from_yaml(config_path)
+        return cls(config)
 
-        self.name = self.config.name
-        self.description = self.config.description
-        logger.info(f"Agent Name: {self.name}")
-
-        # Initialize components
-        logger.info("Setting up components...")
-        self.model = self._init_model()
-        self.tools = self._init_tools()
-
+    def __init__(self, config: AgentConfig):
+        """Initialize OpenAgent with a config object
+        
+        Args:
+            config (AgentConfig): The configuration object
+        """
+        self.config = config
+        logger.info(f"Agent Name: {self.config.name}")
         # Shared context between inputs and outputs
-        self.shared_context: Dict[str, Any] = {}
-
+        self.shared_context = {}
         self.agent = Agent(
-            model=self.model,
-            description=self.description,
-            tools=self.tools,
+            model=self._init_model(),
+            description=self.config.description,
+            tools=self._init_tools(),
             add_history_to_messages=self.config.stateful,
             markdown=self.config.markdown,
             instructions=self.config.instructions,
@@ -61,8 +86,8 @@ class OpenAgent:
         logger.success("Agent initialization completed")
 
         # Initialize input/output handlers
-        self.inputs: List[Input] = []
-        self.outputs: List[Output] = []
+        self.inputs = []
+        self.outputs = []
 
     def _init_model(self):
         """Initialize the language model based on config"""
