@@ -1,15 +1,19 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, TypeVar, Generic
+from pydantic import BaseModel
 
 
-class Output(ABC):
+ConfigT = TypeVar('ConfigT', bound=BaseModel)
+
+
+class Output(ABC, Generic[ConfigT]):
     """Base class for all output handlers"""
 
     def __init__(self):
         self.context: Dict[str, Any] = {}
 
     @abstractmethod
-    async def setup(self, config: Dict[str, Any]) -> None:
+    async def setup(self, config: ConfigT) -> None:
         """Setup the output handler with configuration"""
         pass
 

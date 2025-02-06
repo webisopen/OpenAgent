@@ -6,6 +6,7 @@ from loguru import logger
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from pydantic import BaseModel
 
 from openagent.core.input import Input, InputMessage
 
@@ -22,9 +23,22 @@ class ProcessedMention(Base):
     is_processed = Column(Boolean, default=False)
 
 
-class TwitterMentionInput(Input):
+class TwitterCredentials(BaseModel):
+    bearer_token: str
+    api_key: str
+    api_secret: str
+    access_token: str
+    access_token_secret: str
+
+
+class TwitterMentionConfig(BaseModel):
+    credentials: TwitterCredentials
+    polling_interval: int = 60
+
+
+class TwitterMentionInput(Input[TwitterMentionConfig]):
     def __init__(self):
-        super().__init__()  # Initialize the base class context
+        super().__init__()
         self.client = None
         self.polling_interval = 60
         self.engine = create_engine("sqlite:///storage/mentions.db")
@@ -32,21 +46,19 @@ class TwitterMentionInput(Input):
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
 
-    async def setup(self, config: Dict[str, Any]) -> None:
+    async def setup(self, config: TwitterMentionConfig) -> None:
         """Setup Twitter API client for mentions"""
-        credentials = config.get("credentials", {})
-
         # Initialize Twitter API v2 client
         self.client = tweepy.Client(
-            bearer_token=credentials.get("bearer_token"),
-            consumer_key=credentials.get("api_key"),
-            consumer_secret=credentials.get("api_secret"),
-            access_token=credentials.get("access_token"),
-            access_token_secret=credentials.get("access_token_secret"),
+            bearer_token=config.credentials.bearer_token,
+            consumer_key=config.credentials.api_key,
+            consumer_secret=config.credentials.api_secret,
+            access_token=config.credentials.access_token,
+            access_token_secret=config.credentials.access_token_secret,
         )
 
         # Setup configuration
-        self.polling_interval = config.get("polling_interval", 60)
+        self.polling_interval = config.polling_interval
         logger.info(
             f"Twitter mention input setup for @{self.client.get_me().data.username} completed"
         )

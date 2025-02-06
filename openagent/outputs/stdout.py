@@ -1,19 +1,25 @@
 from typing import Dict, Any
 from loguru import logger
+from pydantic import BaseModel
 
 from openagent.core.output import Output
 
 
-class StdoutOutput(Output):
+class StdoutConfig(BaseModel):
+    prefix: str = ""
+    use_colors: bool = True
+
+
+class StdoutOutput(Output[StdoutConfig]):
     def __init__(self):
         super().__init__()
         self.prefix = ""
         self.use_colors = True
 
-    async def setup(self, config: Dict[str, Any]) -> None:
+    async def setup(self, config: StdoutConfig) -> None:
         """Setup stdout output configuration"""
-        self.prefix = config.get("prefix", "")
-        self.use_colors = config.get("use_colors", True)
+        self.prefix = config.prefix
+        self.use_colors = config.use_colors
 
     async def send(self, message: str) -> bool:
         """Print message to stdout"""

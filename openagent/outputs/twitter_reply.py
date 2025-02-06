@@ -1,25 +1,37 @@
 from typing import Dict, Any
 from loguru import logger
 import tweepy
+from pydantic import BaseModel
 
 from openagent.core.output import Output
 
 
-class TwitterReplyOutput(Output):
+class TwitterCredentials(BaseModel):
+    bearer_token: str
+    api_key: str
+    api_secret: str
+    access_token: str
+    access_token_secret: str
+
+
+class TwitterReplyConfig(BaseModel):
+    credentials: TwitterCredentials
+
+
+class TwitterReplyOutput(Output[TwitterReplyConfig]):
     def __init__(self):
-        super().__init__()  # Initialize the base class context
+        super().__init__()
         self.client = None
 
-    async def setup(self, config: Dict[str, Any]) -> None:
+    async def setup(self, config: TwitterReplyConfig) -> None:
         """Setup Twitter API client with credentials"""
         try:
-            credentials = config.get("credentials", {})
             self.client = tweepy.Client(
-                bearer_token=credentials.get("bearer_token"),
-                consumer_key=credentials.get("api_key"),
-                consumer_secret=credentials.get("api_secret"),
-                access_token=credentials.get("access_token"),
-                access_token_secret=credentials.get("access_token_secret"),
+                bearer_token=config.credentials.bearer_token,
+                consumer_key=config.credentials.api_key,
+                consumer_secret=config.credentials.api_secret,
+                access_token=config.credentials.access_token,
+                access_token_secret=config.credentials.access_token_secret,
             )
 
         except Exception as e:

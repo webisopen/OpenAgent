@@ -1,7 +1,7 @@
 import asyncio
 import inspect
 import time
-from typing import List, Dict, Any
+from typing import Dict, Any
 
 import pyfiglet
 from agno.agent import Agent
@@ -39,8 +39,8 @@ class OpenAgent:
         """
         agent = OpenAgent._from_init(config_path)
         return agent
-        
-    @staticmethod 
+
+    @staticmethod
     def from_config(config: AgentConfig) -> "OpenAgent":
         """Create an OpenAgent instance from an AgentConfig object
         
@@ -184,6 +184,10 @@ class OpenAgent:
                     )
 
                 input_handler = InputClass()
+                # Convert dict to appropriate config type if needed
+                if isinstance(input_config, dict):
+                    config_class = InputClass.__orig_bases__[0].__args__[0]
+                    input_config = config_class(**input_config)
                 await input_handler.setup(input_config)
                 self.inputs.append(input_handler)
                 logger.info(f"Initialized input handler: {input_name}")
@@ -201,6 +205,10 @@ class OpenAgent:
                     )
 
                 output_handler = OutputClass()
+                # Convert dict to appropriate config type if needed
+                if isinstance(output_config, dict):
+                    config_class = OutputClass.__orig_bases__[0].__args__[0]
+                    output_config = config_class(**output_config)
                 await output_handler.setup(output_config)
                 self.outputs.append(output_handler)
                 logger.info(f"Initialized output handler: {output_name}")

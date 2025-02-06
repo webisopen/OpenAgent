@@ -1,18 +1,23 @@
 import asyncio
 from typing import AsyncIterator, Dict, Any
 from loguru import logger
+from pydantic import BaseModel
 
 from openagent.core.input import Input
 
 
-class StdinInput(Input):
+class StdinConfig(BaseModel):
+    prompt: str = "> "
+
+
+class StdinInput(Input[StdinConfig]):
     def __init__(self):
         super().__init__()
         self.prompt = "> "
 
-    async def setup(self, config: Dict[str, Any]) -> None:
+    async def setup(self, config: StdinConfig) -> None:
         """Setup stdin input configuration"""
-        self.prompt = config.get("prompt", "> ")
+        self.prompt = config.prompt
 
     async def listen(self) -> AsyncIterator[str]:
         """Listen for stdin input"""
