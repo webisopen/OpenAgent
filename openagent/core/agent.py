@@ -1,6 +1,6 @@
 import asyncio
 import inspect
-from typing import List
+from typing import List, Dict, Any
 
 import pyfiglet
 from agno.agent import Agent
@@ -37,6 +37,9 @@ class OpenAgent:
         logger.info("Setting up components...")
         self.model = self._init_model()
         self.tools = self._init_tools()
+        
+        # Shared context between inputs and outputs
+        self.shared_context: Dict[str, Any] = {}
 
         self.agent = Agent(
             model=self.model,
@@ -167,16 +170,23 @@ class OpenAgent:
         """Setup input and output handlers"""
         await self._init_io_handlers()
 
-    async def handle_input(self, message: str):
+    async def handle_input(self, message: str, input_context: Dict[str, Any] = None):
         """Handle input message"""
         logger.debug(f"Processing input: {message[:100]}...")
+        
+        # Update shared context with input context
+        if input_context:
+            self.shared_context.update(input_context)
+            
         response = await self.agent.arun(message)
 
         # Send response to all configured outputs
         for output in self.outputs:
             try:
+                # Share context with output handler
+                output.context = self.shared_context.copy()
                 await output.send(response.content)
-                logger.debug("Response sent successfully")
+                logger.debug(f"f{output.__class__.__name__} output sent")
             except Exception as e:
                 logger.error(f"Failed to send response through output: {e}")
 
@@ -201,6 +211,7 @@ class OpenAgent:
             logger.info(f"Listening for messages from {input_handler.__class__.__name__}")
 
             async for message in input_handler.listen():
-                await self.handle_input(message)
+                # Pass input handler's context to handle_input
+                await self.handle_input(message, input_handler.context)
         except Exception as e:
             logger.error(f"Error in input handler: {e}")

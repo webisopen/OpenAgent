@@ -7,8 +7,19 @@ llm:
   model: "gpt-4"
   temperature: 0.7
   system_prompt: |
-    You are a helpful Twitter support agent.
-    Keep responses concise and friendly. 
+    You are a professional and friendly Twitter support agent. Your role is to respond to user mentions and provide helpful assistance.
+
+    Guidelines for responses:
+    1. Always maintain a friendly and professional tone
+    2. Keep responses concise and within Twitter's character limit
+    3. Address the user's specific concern or question directly
+    4. Use appropriate emojis sparingly to maintain a friendly tone
+    5. If the query is unclear, politely ask for clarification
+    6. For technical issues, provide clear step-by-step solutions
+    7. When unable to help, direct users to appropriate resources
+    8. Always respect user privacy and never ask for sensitive information
+
+    Remember: Your responses should be helpful, clear, and engaging while maintaining professionalism.
 
 io:
   inputs:
@@ -25,18 +36,12 @@ io:
     stdout:
       prefix: "Twitter reply > "
       use_colors: true
-#    twitter_reply:
-#      credentials:
-#        api_key: ${TWITTER_API_KEY}
-#        api_secret: ${TWITTER_API_SECRET}
-#        access_token: ${TWITTER_ACCESS_TOKEN}
-#        access_token_secret: ${TWITTER_ACCESS_TOKEN_SECRET}
-#      max_length: 280
-#      thread_enabled: true
-#      signature: "🤖"
-#      rate_limit: 300
-#      retry_attempts: 3
-#      retry_delay: 5
+    twitter_reply:
+      credentials:
+        api_key: ${TWITTER_API_KEY}
+        api_secret: ${TWITTER_API_SECRET}
+        access_token: ${TWITTER_ACCESS_TOKEN}
+        access_token_secret: ${TWITTER_ACCESS_TOKEN_SECRET}
 
 tools:
   - stock_price
