@@ -2,13 +2,13 @@ import asyncio
 import inspect
 from typing import List
 
+import pyfiglet
 from agno.agent import Agent
 from loguru import logger
-import pyfiglet
 
+from openagent.core.config import AgentConfig
 from openagent.core.input import Input
 from openagent.core.output import Output
-from openagent.core.config import AgentConfig
 
 
 def print_banner():
@@ -84,9 +84,10 @@ class OpenAgent:
         # Initialize and return the model
         model = model_class(
             id=model_name,
-            temperature=self.config.llm.temperature
+            temperature=self.config.llm.temperature,
+            api_key=self.config.llm.api_key
         )
-        logger.success(f"Model {model_name} initialized successfully")
+        logger.success("Model initialized successfully")
         return model
 
     def _init_tools(self):
