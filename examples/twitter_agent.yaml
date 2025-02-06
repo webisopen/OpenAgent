@@ -1,6 +1,7 @@
 version: "1.0"
 name: "twitter-support-agent"
 description: "Handles Twitter support requests"
+stateful: true
 
 llm:
   provider: "openai"

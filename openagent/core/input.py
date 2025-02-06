@@ -1,5 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, Any, Dict
+from typing import AsyncIterator, Any, Dict, Union
+from pydantic import BaseModel
+
+
+class InputMessage(BaseModel):
+    """Message received from input source"""
+    session_id: str
+    message: str
 
 
 class Input(ABC):
@@ -14,6 +21,6 @@ class Input(ABC):
         pass
 
     @abstractmethod
-    async def listen(self) -> AsyncIterator[str]:
+    async def listen(self) -> AsyncIterator[Union[str, InputMessage]]:
         """Listen for incoming messages"""
         pass

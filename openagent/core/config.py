@@ -30,6 +30,9 @@ class IOConfig(BaseModel):
 class AgentConfig(BaseModel):
     name: str = Field(default="default-agent", description="Name of the agent")
     description: str = Field(default="", description="Description of the agent")
+    stateful: Optional[bool] = Field(
+        default=True, description="Whether to load session state from storage"
+    )
     llm: LLMConfig = Field(
         default_factory=LLMConfig, description="Language model configuration"
     )

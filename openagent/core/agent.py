@@ -9,7 +9,7 @@ from agno.storage.agent.sqlite import SqliteAgentStorage
 from loguru import logger
 
 from openagent.core.config import AgentConfig
-from openagent.core.input import Input
+from openagent.core.input import Input, InputMessage
 from openagent.core.output import Output
 
 
@@ -48,8 +48,10 @@ class OpenAgent:
             model=self.model,
             description=self.config.llm.system_prompt or self.description,
             tools=self.tools,
+            add_history_to_messages=self.config.stateful,
             markdown=True,
-            storage=SqliteAgentStorage(table_name="agent_sessions", db_file="storage/agent_sessions.db")
+            storage=SqliteAgentStorage(table_name="agent_sessions",
+                                       db_file="storage/agent_sessions.db") if self.config.stateful else None,
         )
         logger.success("Agent initialization completed")
 
@@ -221,7 +223,12 @@ class OpenAgent:
             )
             await asyncio.sleep(0.2)
             async for message in input_handler.listen():
-                # Pass input handler's context to handle_input
-                await self.handle_input(message, input_handler.context)
+                if isinstance(message, InputMessage):
+                    # If it's an InputMessage, use its message field and update context with session_id
+                    self.agent.session_id = message.session_id
+                    await self.handle_input(message.message, input_handler.context)
+                else:
+                    # If it's a string, handle it directly
+                    await self.handle_input(message, input_handler.context)
         except Exception as e:
             logger.error(f"Error in input handler: {e}")

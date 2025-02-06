@@ -1,6 +1,7 @@
 version: "1.0"
 name: "finance-assistant-agent"
 description: "Interactive financial advisor assistant using stdin/stdout"
+stateful: true
 
 llm:
   provider: "openai"

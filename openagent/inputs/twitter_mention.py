@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-from openagent.core.input import Input
+from openagent.core.input import Input, InputMessage
 
 Base = declarative_base()
 
@@ -106,7 +106,10 @@ class TwitterMentionInput(Input):
                             ),
                         }
 
-                        yield tweet.text
+                        yield InputMessage(
+                            session_id=str(tweet.author_id),
+                            message=tweet.text,
+                        )
 
             except Exception as e:
                 logger.error(f"Error fetching Twitter mentions: {e}")
