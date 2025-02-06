@@ -94,11 +94,10 @@ class TwitterMentionInput(Input):
                         # Store tweet id and author id in context
                         self.context = {
                             'tweet_id': tweet.id,
-                            'author_id': tweet.author_id
+                            'author_id': tweet.author_id,
+                            'mark_as_processed': lambda: self.mark_as_processed(tweet.id, tweet.author_id)
                         }
 
-                        # Mark as processed before yielding
-                        self.mark_as_processed(tweet.id, tweet.author_id)
                         yield tweet.text
 
             except Exception as e:

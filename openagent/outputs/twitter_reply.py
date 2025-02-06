@@ -41,6 +41,10 @@ class TwitterReplyOutput(Output):
                     text=message,
                     in_reply_to_tweet_id=tweet_id,
                 )
+                # Mark the tweet as processed after successful reply
+                mark_as_processed = self.context.get('mark_as_processed')
+                if mark_as_processed:
+                    mark_as_processed()
                 return True
             else:
                 logger.error("Missing tweet_id in context")

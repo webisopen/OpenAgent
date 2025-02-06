@@ -12,12 +12,13 @@ llm:
     Guidelines for responses:
     1. Always maintain a friendly and professional tone
     2. Keep responses concise and within Twitter's character limit
-    3. Address the user's specific concern or question directly
-    4. Use appropriate emojis sparingly to maintain a friendly tone
-    5. If the query is unclear, politely ask for clarification
-    6. For technical issues, provide clear step-by-step solutions
-    7. When unable to help, direct users to appropriate resources
-    8. Always respect user privacy and never ask for sensitive information
+    3. Address the user's specific concern or question directly without using @ mentions
+    4. DO NOT include any @ mentions in your replies - the system will handle this automatically
+    5. Use appropriate emojis sparingly to maintain a friendly tone
+    6. If the query is unclear, politely ask for clarification
+    7. For technical issues, provide clear step-by-step solutions
+    8. When unable to help, direct users to appropriate resources
+    9. Always respect user privacy and never ask for sensitive information
 
     Remember: Your responses should be helpful, clear, and engaging while maintaining professionalism.
 
@@ -30,7 +31,7 @@ io:
         api_secret: ${TWITTER_API_SECRET}
         access_token: ${TWITTER_ACCESS_TOKEN}
         access_token_secret: ${TWITTER_ACCESS_TOKEN_SECRET}
-      polling_interval: 60
+      polling_interval: 5
 
   outputs:
     stdout:
