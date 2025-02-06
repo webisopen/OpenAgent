@@ -14,41 +14,29 @@ io:
   inputs:
     twitter_mention:
       credentials:
+        bearer_token: ${TWITTER_BEARER_TOKEN}
         api_key: ${TWITTER_API_KEY}
         api_secret: ${TWITTER_API_SECRET}
         access_token: ${TWITTER_ACCESS_TOKEN}
         access_token_secret: ${TWITTER_ACCESS_TOKEN_SECRET}
       polling_interval: 60
-      rate_limit: 100
-      filters:
-        - type: "content_contains"
-          values: ["help", "support"]
-      
-    twitter_dm:
-      credentials:
-        api_key: ${TWITTER_API_KEY}
-        api_secret: ${TWITTER_API_SECRET}
-        access_token: ${TWITTER_ACCESS_TOKEN}
-        access_token_secret: ${TWITTER_ACCESS_TOKEN_SECRET}
-      polling_interval: 60
-      rate_limit: 100
-      filters:
-        - type: "content_contains"
-          values: ["help", "support"]
 
   outputs:
-    twitter_reply:
-      credentials:
-        api_key: ${TWITTER_API_KEY}
-        api_secret: ${TWITTER_API_SECRET}
-        access_token: ${TWITTER_ACCESS_TOKEN}
-        access_token_secret: ${TWITTER_ACCESS_TOKEN_SECRET}
-      max_length: 280
-      thread_enabled: true
-      signature: "🤖"
-      rate_limit: 300
-      retry_attempts: 3
-      retry_delay: 5
+    stdout:
+      prefix: "Twitter reply > "
+      use_colors: true
+#    twitter_reply:
+#      credentials:
+#        api_key: ${TWITTER_API_KEY}
+#        api_secret: ${TWITTER_API_SECRET}
+#        access_token: ${TWITTER_ACCESS_TOKEN}
+#        access_token_secret: ${TWITTER_ACCESS_TOKEN_SECRET}
+#      max_length: 280
+#      thread_enabled: true
+#      signature: "🤖"
+#      rate_limit: 300
+#      retry_attempts: 3
+#      retry_delay: 5
 
 tools:
-  - xxx
+  - stock_price
