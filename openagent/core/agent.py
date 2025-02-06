@@ -50,8 +50,11 @@ class OpenAgent:
             tools=self.tools,
             add_history_to_messages=self.config.stateful,
             markdown=True,
-            storage=SqliteAgentStorage(table_name="agent_sessions",
-                                       db_file="storage/agent_sessions.db") if self.config.stateful else None,
+            storage=SqliteAgentStorage(
+                table_name="agent_sessions", db_file="storage/agent_sessions.db"
+            )
+            if self.config.stateful
+            else None,
         )
         logger.success("Agent initialization completed")
 
@@ -129,9 +132,9 @@ class OpenAgent:
             module = __import__(module_path, fromlist=["*"])
             for name, obj in inspect.getmembers(module):
                 if (
-                        inspect.isclass(obj)
-                        and issubclass(obj, base_class)
-                        and not inspect.isabstract(obj)
+                    inspect.isclass(obj)
+                    and issubclass(obj, base_class)
+                    and not inspect.isabstract(obj)
                 ):
                     return obj
             return None

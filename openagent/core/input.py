@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class InputMessage(BaseModel):
     """Message received from input source"""
+
     session_id: str
     message: str
 

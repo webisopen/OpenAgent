@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from openagent.core.agent import OpenAgent
 
-load_dotenv(dotenv_path=os.path.join(os.getcwd(), '.env'))
+load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
 
 def handle_signals(loop):

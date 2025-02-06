@@ -20,18 +20,14 @@ async def main():
         ],
         add_history_to_messages=True,
         markdown=True,
-        storage=SqliteAgentStorage(table_name="agent_sessions", db_file="tmp/data.db")
+        storage=SqliteAgentStorage(table_name="agent_sessions", db_file="tmp/data.db"),
     )
-    session_id = "test7",
+    session_id = ("test7",)
     agent.session_id = session_id
-    agent.print_response(
-        "i am bob", show_reasoning=True, show_full_reasoning=True
-    )
+    agent.print_response("i am bob", show_reasoning=True, show_full_reasoning=True)
     agent.session_id = session_id
 
-    agent.print_response(
-        "who  am i", show_reasoning=True, show_full_reasoning=True
-    )
+    agent.print_response("who  am i", show_reasoning=True, show_full_reasoning=True)
 
 
 if __name__ == "__main__":
