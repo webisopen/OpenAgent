@@ -16,4 +16,4 @@ class Input(ABC):
     @abstractmethod
     async def listen(self) -> AsyncIterator[str]:
         """Listen for incoming messages"""
-        pass 
+        pass

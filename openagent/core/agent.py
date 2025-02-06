@@ -37,7 +37,7 @@ class OpenAgent:
         logger.info("Setting up components...")
         self.model = self._init_model()
         self.tools = self._init_tools()
-        
+
         # Shared context between inputs and outputs
         self.shared_context: Dict[str, Any] = {}
 
@@ -45,7 +45,7 @@ class OpenAgent:
             model=self.model,
             description=self.config.llm.system_prompt or self.description,
             tools=self.tools,
-            markdown=True
+            markdown=True,
         )
         logger.success("Agent initialization completed")
 
@@ -61,9 +61,9 @@ class OpenAgent:
 
         # Model class mapping
         MODEL_CLASS_MAP = {
-            'deepseek': ('agno.models.deepseek', 'DeepSeek'),
-            'gpt': ('agno.models.openai', 'OpenAIChat'),
-            'claude': ('agno.models.anthropic', 'Claude'),
+            "deepseek": ("agno.models.deepseek", "DeepSeek"),
+            "gpt": ("agno.models.openai", "OpenAIChat"),
+            "claude": ("agno.models.anthropic", "Claude"),
             # Add more models here as needed
         }
 
@@ -82,13 +82,14 @@ class OpenAgent:
         if model_class is None:
             logger.warning("No specific model class found, defaulting to OpenAI")
             from agno.models.openai import OpenAIChat
+
             model_class = OpenAIChat
 
         # Initialize and return the model
         model = model_class(
             id=model_name,
             temperature=self.config.llm.temperature,
-            api_key=self.config.llm.api_key
+            api_key=self.config.llm.api_key,
         )
         logger.success("Model initialized successfully")
         return model
@@ -100,11 +101,11 @@ class OpenAgent:
 
         for tool_name in self.config.tools:
             try:
-                module = __import__(f'openagent.tools.{tool_name}', fromlist=['*'])
+                module = __import__(f"openagent.tools.{tool_name}", fromlist=["*"])
 
                 # Import all non-private functions from the module
                 for name, obj in inspect.getmembers(module):
-                    if inspect.isfunction(obj) and not name.startswith('_'):
+                    if inspect.isfunction(obj) and not name.startswith("_"):
                         tools.append(obj)
                         logger.info(f"Loaded tool: {name} from {tool_name}")
 
@@ -119,11 +120,13 @@ class OpenAgent:
     def _get_concrete_implementation(self, module_path, base_class):
         """Helper function to get concrete implementation of a base class"""
         try:
-            module = __import__(module_path, fromlist=['*'])
+            module = __import__(module_path, fromlist=["*"])
             for name, obj in inspect.getmembers(module):
-                if (inspect.isclass(obj)
-                        and issubclass(obj, base_class)
-                        and not inspect.isabstract(obj)):
+                if (
+                    inspect.isclass(obj)
+                    and issubclass(obj, base_class)
+                    and not inspect.isabstract(obj)
+                ):
                     return obj
             return None
         except ImportError:
@@ -137,10 +140,12 @@ class OpenAgent:
         # Setup inputs
         for input_name, input_config in self.config.io.inputs.items():
             try:
-                module_path = f'openagent.inputs.{input_name}'
+                module_path = f"openagent.inputs.{input_name}"
                 InputClass = self._get_concrete_implementation(module_path, Input)
                 if InputClass is None:
-                    raise ImportError(f"No concrete Input implementation found in {module_path}")
+                    raise ImportError(
+                        f"No concrete Input implementation found in {module_path}"
+                    )
 
                 input_handler = InputClass()
                 await input_handler.setup(input_config)
@@ -152,10 +157,12 @@ class OpenAgent:
         # Setup outputs
         for output_name, output_config in self.config.io.outputs.items():
             try:
-                module_path = f'openagent.outputs.{output_name}'
+                module_path = f"openagent.outputs.{output_name}"
                 OutputClass = self._get_concrete_implementation(module_path, Output)
                 if OutputClass is None:
-                    raise ImportError(f"No concrete Output implementation found in {module_path}")
+                    raise ImportError(
+                        f"No concrete Output implementation found in {module_path}"
+                    )
 
                 output_handler = OutputClass()
                 await output_handler.setup(output_config)
@@ -173,11 +180,11 @@ class OpenAgent:
     async def handle_input(self, message: str, input_context: Dict[str, Any] = None):
         """Handle input message"""
         logger.debug(f"Processing input: {message[:100]}...")
-        
+
         # Update shared context with input context
         if input_context:
             self.shared_context.update(input_context)
-            
+
         response = await self.agent.arun(message)
 
         # Send response to all configured outputs
@@ -197,9 +204,7 @@ class OpenAgent:
         # Start listening on all input handlers
         input_tasks = []
         for input_handler in self.inputs:
-            input_tasks.append(
-                asyncio.create_task(self._listen_input(input_handler))
-            )
+            input_tasks.append(asyncio.create_task(self._listen_input(input_handler)))
 
         logger.success("Agent started successfully")
         await asyncio.gather(*input_tasks)
@@ -208,7 +213,9 @@ class OpenAgent:
         """Listen for messages from an input handler"""
         try:
             await asyncio.sleep(0.5)
-            logger.info(f"Listening for messages from {input_handler.__class__.__name__}")
+            logger.info(
+                f"Listening for messages from {input_handler.__class__.__name__}"
+            )
 
             async for message in input_handler.listen():
                 # Pass input handler's context to handle_input

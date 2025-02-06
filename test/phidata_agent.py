@@ -13,10 +13,16 @@ async def main():
     agent = Agent(
         model=OpenAIChat(id="gpt-4o"),
         description="You are an enthusiastic news reporter with a flair for storytelling!",
-        tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, company_info=True)],
-        markdown=True
+        tools=[
+            YFinanceTools(
+                stock_price=True, analyst_recommendations=True, company_info=True
+            )
+        ],
+        markdown=True,
     )
-    agent.print_response("Apple stock price", show_reasoning=True, show_full_reasoning=True)
+    agent.print_response(
+        "Apple stock price", show_reasoning=True, show_full_reasoning=True
+    )
 
 
 if __name__ == "__main__":

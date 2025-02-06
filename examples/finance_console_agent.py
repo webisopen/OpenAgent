@@ -1,9 +1,9 @@
 from openagent.cli import cli
 from loguru import logger
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
-        cli(['start', '--file', 'finance_console_agent.yaml'])
+        cli(["start", "--file", "finance_console_agent.yaml"])
     except Exception as e:
         logger.error(f"Error occurred: {str(e)}")
         raise

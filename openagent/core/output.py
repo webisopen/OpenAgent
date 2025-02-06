@@ -16,4 +16,4 @@ class Output(ABC):
     @abstractmethod
     async def send(self, message: str) -> bool:
         """Send a message through this output channel"""
-        pass 
+        pass

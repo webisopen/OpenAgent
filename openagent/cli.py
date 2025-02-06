@@ -1,11 +1,11 @@
 import asyncio
 import os
 import signal
+
 import click
-import pyfiglet
-from loguru import logger
-from openagent.core.agent import OpenAgent
 from dotenv import load_dotenv
+
+from openagent.core.agent import OpenAgent
 
 load_dotenv()
 
@@ -31,7 +31,7 @@ def cli():
 
 
 @cli.command()
-@click.option('-f', '--file', required=True, help='Path to the config file')
+@click.option("-f", "--file", required=True, help="Path to the config file")
 def start(file):
     """Start OpenAgent with specified config file"""
     if not os.path.exists(file):
@@ -39,7 +39,6 @@ def start(file):
         return
 
     try:
-
         agent = OpenAgent(file)
 
         loop = asyncio.new_event_loop()
@@ -56,5 +55,5 @@ def start(file):
         click.echo(f"Error: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

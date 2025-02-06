@@ -9,47 +9,47 @@ class TwitterReplyOutput(Output):
     def __init__(self):
         super().__init__()  # Initialize the base class context
         self.client = None
-        
+
     async def setup(self, config: Dict[str, Any]) -> None:
         """Setup Twitter API client with credentials"""
         try:
-            credentials = config.get('credentials', {})
+            credentials = config.get("credentials", {})
             self.client = tweepy.Client(
-                bearer_token=credentials.get('bearer_token'),
-                consumer_key=credentials.get('api_key'),
-                consumer_secret=credentials.get('api_secret'),
-                access_token=credentials.get('access_token'),
-                access_token_secret=credentials.get('access_token_secret')
+                bearer_token=credentials.get("bearer_token"),
+                consumer_key=credentials.get("api_key"),
+                consumer_secret=credentials.get("api_secret"),
+                access_token=credentials.get("access_token"),
+                access_token_secret=credentials.get("access_token_secret"),
             )
-            
+
         except Exception as e:
             logger.error(f"Error setting up Twitter client: {e}")
             raise
-    
+
     async def send(self, message: str) -> bool:
         """Send reply tweet"""
         if not self.client:
             logger.error("Twitter client not initialized")
             return False
-            
+
         try:
             # Get tweet ID from context
-            tweet_id = self.context.get('tweet_id')
-            
+            tweet_id = self.context.get("tweet_id")
+
             if tweet_id:
                 self.client.create_tweet(
                     text=message,
                     in_reply_to_tweet_id=tweet_id,
                 )
                 # Mark the tweet as processed after successful reply
-                mark_as_processed = self.context.get('mark_as_processed')
+                mark_as_processed = self.context.get("mark_as_processed")
                 if mark_as_processed:
                     mark_as_processed()
                 return True
             else:
                 logger.error("Missing tweet_id in context")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Error sending tweet: {e}")
-            return False 
+            return False

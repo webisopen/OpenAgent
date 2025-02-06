@@ -20,7 +20,7 @@ io:
   inputs:
     stdin:
       prompt: "User > "
-  
+
   outputs:
     stdout:
       prefix: "Financial Advisor > "
@@ -28,5 +28,3 @@ io:
 
 tools:
   - stock_price
-
-
