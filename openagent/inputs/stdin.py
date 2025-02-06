@@ -7,6 +7,7 @@ from openagent.core.input import Input
 
 class StdinInput(Input):
     def __init__(self):
+        super().__init__()
         self.prompt = "> "
 
     async def setup(self, config: Dict[str, Any]) -> None:
