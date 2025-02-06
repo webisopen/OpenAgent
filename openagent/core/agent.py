@@ -30,10 +30,10 @@ class OpenAgent:
     @staticmethod
     def from_yaml_file(config_path: str) -> "OpenAgent":
         """Create an OpenAgent instance from a yaml config file
-        
+
         Args:
             config_path (str): Path to the yaml config file
-            
+
         Returns:
             OpenAgent: A new OpenAgent instance
         """
@@ -43,10 +43,10 @@ class OpenAgent:
     @staticmethod
     def from_config(config: AgentConfig) -> "OpenAgent":
         """Create an OpenAgent instance from an AgentConfig object
-        
+
         Args:
             config (AgentConfig): The configuration object
-            
+
         Returns:
             OpenAgent: A new OpenAgent instance
         """
@@ -61,14 +61,14 @@ class OpenAgent:
 
     def __init__(self, config: AgentConfig):
         """Initialize OpenAgent with a config object
-        
+
         Args:
             config (AgentConfig): The configuration object
         """
         self.config = config
         logger.info(f"Agent Name: {self.config.name}")
         # Shared context between inputs and outputs
-        self.shared_context = {}
+        self.shared_context: dict[object, object] = {}
         self.agent = Agent(
             model=self._init_model(),
             description=self.config.description,
@@ -86,8 +86,8 @@ class OpenAgent:
         logger.success("Agent initialization completed")
 
         # Initialize input/output handlers
-        self.inputs = []
-        self.outputs = []
+        self.inputs: list[Input] = []
+        self.outputs: list[Output] = []
 
     def _init_model(self):
         """Initialize the language model based on config"""
@@ -159,9 +159,9 @@ class OpenAgent:
             module = __import__(module_path, fromlist=["*"])
             for name, obj in inspect.getmembers(module):
                 if (
-                        inspect.isclass(obj)
-                        and issubclass(obj, base_class)
-                        and not inspect.isabstract(obj)
+                    inspect.isclass(obj)
+                    and issubclass(obj, base_class)
+                    and not inspect.isabstract(obj)
                 ):
                     return obj
             return None

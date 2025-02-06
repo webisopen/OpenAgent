@@ -3,7 +3,7 @@ from typing import Any, Dict, TypeVar, Generic
 from pydantic import BaseModel
 
 
-ConfigT = TypeVar('ConfigT', bound=BaseModel)
+ConfigT = TypeVar("ConfigT", bound=BaseModel)
 
 
 class Output(ABC, Generic[ConfigT]):

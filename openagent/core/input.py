@@ -10,7 +10,7 @@ class InputMessage(BaseModel):
     message: str
 
 
-ConfigT = TypeVar('ConfigT', bound=BaseModel)
+ConfigT = TypeVar("ConfigT", bound=BaseModel)
 
 
 class Input(ABC, Generic[ConfigT]):

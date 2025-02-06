@@ -28,7 +28,8 @@ class IOConfig(BaseModel):
 class AgentConfig(BaseModel):
     name: str = Field(default="default-agent", description="Name of the agent")
     description: str = Field(
-        default="", description="A description that guides the overall behaviour of the agent"
+        default="",
+        description="A description that guides the overall behaviour of the agent",
     )
     instructions: List[str] = Field(
         default_factory=list, description="List of precise, task-specific instructions"
@@ -36,9 +37,7 @@ class AgentConfig(BaseModel):
     debug_mode: bool = Field(
         default=False, description="Enable debug mode to view detailed logs"
     )
-    markdown: bool = Field(
-        default=True, description="Format output using markdown"
-    )
+    markdown: bool = Field(default=True, description="Format output using markdown")
     stateful: Optional[bool] = Field(
         default=True, description="Whether to load session state from storage"
     )

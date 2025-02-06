@@ -1,4 +1,3 @@
-from typing import Dict, Any
 from loguru import logger
 import tweepy
 from pydantic import BaseModel

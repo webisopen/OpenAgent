@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import AsyncIterator, Dict, Any
+from typing import AsyncIterator
 import tweepy
 from loguru import logger
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean

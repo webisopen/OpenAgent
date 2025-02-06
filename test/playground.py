@@ -30,7 +30,14 @@ web_agent = Agent(
 finance_agent = Agent(
     name="Finance Agent",
     model=OpenAIChat(id="gpt-4o"),
-    tools=[YFinanceTools(stock_price=True, analyst_recommendations=True, company_info=True, company_news=True)],
+    tools=[
+        YFinanceTools(
+            stock_price=True,
+            analyst_recommendations=True,
+            company_info=True,
+            company_news=True,
+        )
+    ],
     instructions=["Always use tables to display data"],
     storage=SqliteAgentStorage(table_name="finance_agent", db_file=agent_storage),
     add_datetime_to_instructions=True,
