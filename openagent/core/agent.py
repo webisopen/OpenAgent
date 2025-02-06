@@ -2,13 +2,13 @@ import asyncio
 import inspect
 from typing import List
 
-import yaml
 from agno.agent import Agent
 from loguru import logger
 import pyfiglet
 
 from openagent.core.input import Input
 from openagent.core.output import Output
+from openagent.core.config import AgentConfig
 
 
 def print_banner():
@@ -27,11 +27,10 @@ class OpenAgent:
     def __init__(self, config_path: str):
         """Initialize OpenAgent with a yaml config file"""
         logger.info("Initializing OpenAgent...")
-        with open(config_path, 'r') as f:
-            self.config = yaml.safe_load(f)
+        self.config = AgentConfig.from_yaml(config_path)
 
-        self.name = self.config.get('name', 'default-agent')
-        self.description = self.config.get('description', '')
+        self.name = self.config.name
+        self.description = self.config.description
         logger.info(f"Agent Name: {self.name}")
 
         # Initialize components
@@ -41,7 +40,7 @@ class OpenAgent:
 
         self.agent = Agent(
             model=self.model,
-            description=self.llm_config.get('system_prompt', self.description),
+            description=self.config.llm.system_prompt or self.description,
             tools=self.tools,
             markdown=True
         )
@@ -54,8 +53,7 @@ class OpenAgent:
     def _init_model(self):
         """Initialize the language model based on config"""
         logger.info("Initializing language model...")
-        self.llm_config = self.config.get('llm', {})
-        model_name = self.llm_config.get('model', 'gpt-4')
+        model_name = self.config.llm.model
         logger.info(f"Using model: {model_name}")
 
         # Model class mapping
@@ -86,7 +84,7 @@ class OpenAgent:
         # Initialize and return the model
         model = model_class(
             id=model_name,
-            temperature=self.llm_config.get('temperature', 0.7)
+            temperature=self.config.llm.temperature
         )
         logger.success(f"Model {model_name} initialized successfully")
         return model
@@ -94,10 +92,9 @@ class OpenAgent:
     def _init_tools(self):
         """Initialize tool functions based on config"""
         logger.info("Loading tools...")
-        self.tools_config = self.config.get('tools', {})
         tools = []
 
-        for tool_name in self.tools_config:
+        for tool_name in self.config.tools:
             try:
                 module = __import__(f'openagent.tools.{tool_name}', fromlist=['*'])
 
@@ -132,10 +129,9 @@ class OpenAgent:
     async def _init_io_handlers(self):
         """Initialize input and output handlers based on config"""
         logger.info("Initializing I/O handlers...")
-        io_config = self.config.get('io', {})
 
         # Setup inputs
-        for input_name, input_config in io_config.get('inputs', {}).items():
+        for input_name, input_config in self.config.io.inputs.items():
             try:
                 module_path = f'openagent.inputs.{input_name}'
                 InputClass = self._get_concrete_implementation(module_path, Input)
@@ -150,7 +146,7 @@ class OpenAgent:
                 logger.error(f"Failed to initialize input handler {input_name}: {e}")
 
         # Setup outputs
-        for output_name, output_config in io_config.get('outputs', {}).items():
+        for output_name, output_config in self.config.io.outputs.items():
             try:
                 module_path = f'openagent.outputs.{output_name}'
                 OutputClass = self._get_concrete_implementation(module_path, Output)
@@ -200,7 +196,7 @@ class OpenAgent:
     async def _listen_input(self, input_handler: Input):
         """Listen for messages from an input handler"""
         try:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.5)
             logger.info(f"Listening for messages from {input_handler.__class__.__name__}")
 
             async for message in input_handler.listen():
