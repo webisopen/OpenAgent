@@ -186,7 +186,7 @@ class OpenAgent:
                 # Share context with output handler
                 output.context = self.shared_context.copy()
                 await output.send(response.content)
-                logger.debug(f"f{output.__class__.__name__} output sent")
+                logger.debug(f"{output.__class__.__name__} output sent")
             except Exception as e:
                 logger.error(f"Failed to send response through output: {e}")
 
