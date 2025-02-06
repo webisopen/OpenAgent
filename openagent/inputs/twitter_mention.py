@@ -27,7 +27,7 @@ class TwitterMentionInput(Input):
         super().__init__()  # Initialize the base class context
         self.client = None
         self.polling_interval = 60
-        self.engine = create_engine("sqlite:///mentions.db")
+        self.engine = create_engine("sqlite:///storage/mentions.db")
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()

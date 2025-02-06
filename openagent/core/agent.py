@@ -1,9 +1,11 @@
 import asyncio
 import inspect
+import time
 from typing import List, Dict, Any
 
 import pyfiglet
 from agno.agent import Agent
+from agno.storage.agent.sqlite import SqliteAgentStorage
 from loguru import logger
 
 from openagent.core.config import AgentConfig
@@ -15,8 +17,9 @@ def print_banner():
     """Print the OpenAgent ASCII banner"""
     banner = pyfiglet.figlet_format("OpenAgent", font="slant")
     version = "v0.2.0"
-    print("\n" + banner)
-    print(f"{' ' * 45}version {version}\n", flush=True)
+    print(banner)
+    print(f"{' ' * 45}version {version}", flush=True)
+    time.sleep(0.1)
 
 
 # Print banner at module level
@@ -46,6 +49,7 @@ class OpenAgent:
             description=self.config.llm.system_prompt or self.description,
             tools=self.tools,
             markdown=True,
+            storage=SqliteAgentStorage(table_name="agent_sessions", db_file="storage/agent_sessions.db")
         )
         logger.success("Agent initialization completed")
 
@@ -123,9 +127,9 @@ class OpenAgent:
             module = __import__(module_path, fromlist=["*"])
             for name, obj in inspect.getmembers(module):
                 if (
-                    inspect.isclass(obj)
-                    and issubclass(obj, base_class)
-                    and not inspect.isabstract(obj)
+                        inspect.isclass(obj)
+                        and issubclass(obj, base_class)
+                        and not inspect.isabstract(obj)
                 ):
                     return obj
             return None
@@ -212,11 +216,10 @@ class OpenAgent:
     async def _listen_input(self, input_handler: Input):
         """Listen for messages from an input handler"""
         try:
-            await asyncio.sleep(0.5)
             logger.info(
                 f"Listening for messages from {input_handler.__class__.__name__}"
             )
-
+            await asyncio.sleep(0.2)
             async for message in input_handler.listen():
                 # Pass input handler's context to handle_input
                 await self.handle_input(message, input_handler.context)

@@ -1,10 +1,10 @@
 import asyncio
 
+from agno.storage.agent.sqlite import SqliteAgentStorage
 from agno.tools.yfinance import YFinanceTools
 from dotenv import load_dotenv
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
-
 
 load_dotenv()
 
@@ -19,6 +19,7 @@ async def main():
             )
         ],
         markdown=True,
+        storage=SqliteAgentStorage(table_name="agent_sessions", db_file="tmp/data.db")
     )
     agent.print_response(
         "Apple stock price", show_reasoning=True, show_full_reasoning=True
