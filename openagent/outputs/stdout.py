@@ -6,6 +6,7 @@ from openagent.core.output import Output
 
 class StdoutOutput(Output):
     def __init__(self):
+        super().__init__()
         self.prefix = ""
         self.use_colors = True
 
