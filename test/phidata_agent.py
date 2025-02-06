@@ -13,6 +13,7 @@ async def main():
     agent = Agent(
         model=OpenAIChat(id="gpt-4o"),
         description="you are assistant!",
+        debug_mode=True,
         tools=[
             YFinanceTools(
                 stock_price=True, analyst_recommendations=True, company_info=True

@@ -46,10 +46,12 @@ class OpenAgent:
 
         self.agent = Agent(
             model=self.model,
-            description=self.config.llm.system_prompt or self.description,
+            description=self.description,
             tools=self.tools,
             add_history_to_messages=self.config.stateful,
-            markdown=True,
+            markdown=self.config.markdown,
+            instructions=self.config.instructions,
+            debug_mode=self.config.debug_mode,
             storage=SqliteAgentStorage(
                 table_name="agent_sessions", db_file="storage/agent_sessions.db"
             )
@@ -132,9 +134,9 @@ class OpenAgent:
             module = __import__(module_path, fromlist=["*"])
             for name, obj in inspect.getmembers(module):
                 if (
-                    inspect.isclass(obj)
-                    and issubclass(obj, base_class)
-                    and not inspect.isabstract(obj)
+                        inspect.isclass(obj)
+                        and issubclass(obj, base_class)
+                        and not inspect.isabstract(obj)
                 ):
                     return obj
             return None

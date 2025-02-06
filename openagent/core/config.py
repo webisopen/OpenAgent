@@ -9,9 +9,6 @@ class LLMConfig(BaseModel):
     temperature: float = Field(
         default=0.7, description="Temperature for model sampling"
     )
-    system_prompt: Optional[str] = Field(
-        default=None, description="System prompt for the model"
-    )
     api_key: Optional[str] = Field(
         default=None,
         description="API key for the language model. If not provided, will try to load from environment variable based on model prefix",
@@ -29,7 +26,18 @@ class IOConfig(BaseModel):
 
 class AgentConfig(BaseModel):
     name: str = Field(default="default-agent", description="Name of the agent")
-    description: str = Field(default="", description="Description of the agent")
+    description: str = Field(
+        default="", description="A description that guides the overall behaviour of the agent"
+    )
+    instructions: List[str] = Field(
+        default_factory=list, description="List of precise, task-specific instructions"
+    )
+    debug_mode: bool = Field(
+        default=False, description="Enable debug mode to view detailed logs"
+    )
+    markdown: bool = Field(
+        default=True, description="Format output using markdown"
+    )
     stateful: Optional[bool] = Field(
         default=True, description="Whether to load session state from storage"
     )
