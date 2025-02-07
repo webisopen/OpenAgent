@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Union, Awaitable
 
 from agno.tools import Function
 from pydantic import BaseModel
@@ -32,10 +32,13 @@ class BaseFunction(ABC):
         pass
 
     @abstractmethod
-    def __call__(self, *args, **kwargs) -> Any:
+    def __call__(self, *args, **kwargs) -> Union[Any, Awaitable[Any]]:
+        """
+        Execute the function. Can be either synchronous or asynchronous.
+        If asynchronous, it should return an Awaitable.
+        """
         raise NotImplementedError("Subclasses must implement __call__")
 
     def to_function(self) -> "Function":
         """Convert to Function object"""
         return Function.from_callable(self.__call__)
-

@@ -12,7 +12,7 @@ class PriceToolConfig(BaseModel):
     coingecko_api_key: str = Field(description="CoinGecko API key for accessing price data")
 
 
-def fetch_price(token: str, coingecko_api_key) -> str:
+async def fetch_price(token: str, coingecko_api_key) -> str:
     url = f"https://pro-api.coingecko.com/api/v3/search?query={token}"
 
     headers = {
@@ -58,10 +58,10 @@ class PriceTool(BaseFunction):
         """Setup the price tool with configuration"""
         self.coingecko_api_key = config.coingecko_api_key
 
-    def __call__(self, token: str) -> Any:
+    async def __call__(self, token: str) -> Any:
         """Execute the price tool to get token price data
         @type token: the token symbol, like 'ETH', 'BTC'
         """
-        return fetch_price(token, self.coingecko_api_key)
+        return await fetch_price(token, self.coingecko_api_key)
 
 
