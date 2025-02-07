@@ -10,9 +10,9 @@ from loguru import logger
 from pydantic import BaseModel
 
 from openagent.core.config import AgentConfig
-from openagent.core.input import Input, InputMessage
-from openagent.core.output import Output
-from openagent.core.tool import Tool
+from openagent.core.interfaces.input import Input, InputMessage
+from openagent.core.interfaces.output import Output
+from openagent.core.interfaces.tool import Tool
 
 
 def print_banner():

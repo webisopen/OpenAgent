@@ -2,7 +2,7 @@ from loguru import logger
 import tweepy
 from pydantic import BaseModel
 
-from openagent.core.output import Output
+from openagent.core.interfaces.output import Output
 
 
 class TwitterCredentials(BaseModel):

@@ -4,7 +4,7 @@ from typing import Any
 import requests
 from pydantic import BaseModel, Field
 
-from openagent.core.tool import Tool
+from openagent.core.interfaces.tool import Tool
 
 
 class PriceToolConfig(BaseModel):

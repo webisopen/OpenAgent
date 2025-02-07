@@ -1,7 +1,7 @@
 from loguru import logger
 from pydantic import BaseModel
 
-from openagent.core.output import Output
+from openagent.core.interfaces.output import Output
 
 
 class StdoutConfig(BaseModel):

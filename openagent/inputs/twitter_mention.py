@@ -8,7 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
 
-from openagent.core.input import Input, InputMessage
+from openagent.core.interfaces.input import Input, InputMessage
 
 Base = declarative_base()
 

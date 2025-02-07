@@ -3,7 +3,7 @@ from typing import AsyncIterator
 from loguru import logger
 from pydantic import BaseModel
 
-from openagent.core.input import Input
+from openagent.core.interfaces.input import Input
 
 
 class StdinConfig(BaseModel):
