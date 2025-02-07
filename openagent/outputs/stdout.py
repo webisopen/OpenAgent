@@ -24,8 +24,8 @@ class StdoutOutput(Output[StdoutConfig]):
         """Print message to stdout"""
         try:
             if self.use_colors:
-                # Use cyan color for output
-                formatted_message = f"\033[96m{self.prefix}{message}\033[0m"
+                # Use green color for output
+                formatted_message = f"\033[92m{self.prefix}{message}\033[0m"
             else:
                 formatted_message = f"{self.prefix}{message}"
 

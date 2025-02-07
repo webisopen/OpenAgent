@@ -24,6 +24,13 @@ io:
     stdout:
       prefix: "Analysis > "
       use_colors: true
+    twitter_post:
+      credentials:
+        bearer_token: ${TWITTER_BEARER_TOKEN}
+        api_key: ${TWITTER_API_KEY}
+        api_secret: ${TWITTER_API_SECRET}
+        access_token: ${TWITTER_ACCESS_TOKEN}
+        access_token_secret: ${TWITTER_ACCESS_TOKEN_SECRET}
 
 tools:
   token_price:
