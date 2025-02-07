@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from openagent.core.config import AgentConfig
 from openagent.core.input import Input, InputMessage
 from openagent.core.output import Output
-from openagent.core.tool import BaseFunction
+from openagent.core.tool import Tool
 
 
 def print_banner():
@@ -128,22 +128,25 @@ class OpenAgent:
 
                 # Import all concrete implementations of BaseFunction
                 for name, obj in inspect.getmembers(module):
-                    if (inspect.isclass(obj) and 
-                        issubclass(obj, BaseFunction) and 
-                        not inspect.isabstract(obj)):
-                        
+                    if (
+                        inspect.isclass(obj)
+                        and issubclass(obj, Tool)
+                        and not inspect.isabstract(obj)
+                    ):
                         # Initialize the tool instance
                         tool_instance = obj()
-                        
+
                         # If tool has a config defined in the module, use it
                         config_class = None
                         for config_name, config_obj in inspect.getmembers(module):
-                            if (inspect.isclass(config_obj) and 
-                                issubclass(config_obj, BaseModel) and 
-                                config_name.endswith('Config')):
+                            if (
+                                inspect.isclass(config_obj)
+                                and issubclass(config_obj, BaseModel)
+                                and config_name.endswith("Config")
+                            ):
                                 config_class = config_obj
                                 break
-                        
+
                         # Setup the tool with config from yaml if available, otherwise use default
                         if config_class:
                             if tool_config:
@@ -151,7 +154,7 @@ class OpenAgent:
                             else:
                                 config_instance = config_class()
                             await tool_instance.setup(config_instance)
-                            
+
                         # Convert to Function object and add to tools list
                         tools.append(tool_instance.to_function())
                         logger.info(f"Loaded tool: {name} from {tool_name}")
@@ -273,7 +276,7 @@ class OpenAgent:
     async def start(self):
         # Initialize agent with tools
         await self._init_agent()
-        
+
         # Setup IO handlers
         await self.setup_io_handlers()
 

@@ -1,24 +1,22 @@
-import asyncio
 import json
 from typing import Any
 
 import requests
 from pydantic import BaseModel, Field
 
-from openagent.core.tool import BaseFunction, ConfigT
+from openagent.core.tool import Tool
 
 
 class PriceToolConfig(BaseModel):
-    coingecko_api_key: str = Field(description="CoinGecko API key for accessing price data")
+    coingecko_api_key: str = Field(
+        description="CoinGecko API key for accessing price data"
+    )
 
 
 async def fetch_price(token: str, coingecko_api_key) -> str:
     url = f"https://pro-api.coingecko.com/api/v3/search?query={token}"
 
-    headers = {
-        "accept": "application/json",
-        "x-cg-pro-api-key": coingecko_api_key
-    }
+    headers = {"accept": "application/json", "x-cg-pro-api-key": coingecko_api_key}
 
     response = requests.get(url, headers=headers)
     token_: dict = json.loads(response.text)["coins"][0]
@@ -30,16 +28,13 @@ async def fetch_price(token: str, coingecko_api_key) -> str:
         f"include_24hr_change=true&include_last_updated_at=true"
     )
 
-    headers = {
-        "accept": "application/json",
-        "x-cg-pro-api-key": coingecko_api_key
-    }
+    headers = {"accept": "application/json", "x-cg-pro-api-key": coingecko_api_key}
 
     response = requests.get(url, headers=headers)
     return response.text
 
 
-class PriceTool(BaseFunction):
+class PriceTool(Tool):
     """Tool for fetching token prices from CoinGecko."""
 
     @property
@@ -48,7 +43,9 @@ class PriceTool(BaseFunction):
 
     @property
     def description(self) -> str:
-        return "Use this tool to get the price and market data of a cryptocurrency token"
+        return (
+            "Use this tool to get the price and market data of a cryptocurrency token"
+        )
 
     def __init__(self):
         super().__init__()
@@ -63,5 +60,3 @@ class PriceTool(BaseFunction):
         @type token: the token symbol, like 'ETH', 'BTC'
         """
         return await fetch_price(token, self.coingecko_api_key)
-
-

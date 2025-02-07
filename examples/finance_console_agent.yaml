@@ -33,4 +33,3 @@ io:
 tools:
   token_price:
     coingecko_api_key: ${COINGECKO_API_KEY}
-

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 ConfigT = TypeVar("ConfigT", bound=BaseModel)
 
 
-class BaseFunction(ABC):
+class Tool(ABC):
     """Base class for functions that can be converted to Function objects."""
 
     @property
