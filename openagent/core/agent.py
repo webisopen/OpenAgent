@@ -7,10 +7,12 @@ import pyfiglet
 from agno.agent import Agent
 from agno.storage.agent.sqlite import SqliteAgentStorage
 from loguru import logger
+from pydantic import BaseModel
 
 from openagent.core.config import AgentConfig
 from openagent.core.input import Input, InputMessage
 from openagent.core.output import Output
+from openagent.core.tool import BaseFunction
 
 
 def print_banner():
@@ -69,22 +71,7 @@ class OpenAgent:
         logger.info(f"Agent Name: {self.config.name}")
         # Shared context between inputs and outputs
         self.shared_context: dict[object, object] = {}
-        self.agent = Agent(
-            model=self._init_model(),
-            description=self.config.description,
-            tools=self._init_tools(),
-            add_history_to_messages=self.config.stateful,
-            markdown=self.config.markdown,
-            instructions=self.config.instructions,
-            debug_mode=self.config.debug_mode,
-            storage=SqliteAgentStorage(
-                table_name="agent_sessions", db_file="storage/agent_sessions.db"
-            )
-            if self.config.stateful
-            else None,
-        )
-        logger.success("Agent initialization completed")
-
+        self.agent = None
         # Initialize input/output handlers
         self.inputs: list[Input] = []
         self.outputs: list[Output] = []
@@ -130,7 +117,7 @@ class OpenAgent:
         logger.success("Model initialized successfully")
         return model
 
-    def _init_tools(self):
+    async def _init_tools(self):
         """Initialize tool functions based on config"""
         logger.info("Loading tools...")
         tools = []
@@ -139,10 +126,30 @@ class OpenAgent:
             try:
                 module = __import__(f"openagent.tools.{tool_name}", fromlist=["*"])
 
-                # Import all non-private functions from the module
+                # Import all concrete implementations of BaseFunction
                 for name, obj in inspect.getmembers(module):
-                    if inspect.isfunction(obj) and not name.startswith("_"):
-                        tools.append(obj)
+                    if (inspect.isclass(obj) and 
+                        issubclass(obj, BaseFunction) and 
+                        not inspect.isabstract(obj)):
+                        
+                        # Initialize the tool instance
+                        tool_instance = obj()
+                        
+                        # If tool has a config defined in the module, use it
+                        config_class = None
+                        for config_name, config_obj in inspect.getmembers(module):
+                            if (inspect.isclass(config_obj) and 
+                                issubclass(config_obj, BaseModel) and 
+                                config_name.endswith('Config')):
+                                config_class = config_obj
+                                break
+                        
+                        # Setup the tool with default config if available
+                        if config_class:
+                            await tool_instance.setup(config_class())
+                            
+                        # Convert to Function object and add to tools list
+                        tools.append(tool_instance.to_function())
                         logger.info(f"Loaded tool: {name} from {tool_name}")
 
             except ImportError as e:
@@ -241,7 +248,28 @@ class OpenAgent:
             except Exception as e:
                 logger.error(f"Failed to send response through output: {e}")
 
+    async def _init_agent(self):
+        """Initialize the agent with tools"""
+        tools = await self._init_tools()
+        self.agent = Agent(
+            model=self._init_model(),
+            description=self.config.description,
+            tools=tools,
+            add_history_to_messages=self.config.stateful,
+            markdown=self.config.markdown,
+            instructions=self.config.instructions,
+            debug_mode=self.config.debug_mode,
+            storage=SqliteAgentStorage(
+                table_name="agent_sessions", db_file="storage/agent_sessions.db"
+            )
+            if self.config.stateful
+            else None,
+        )
+
     async def start(self):
+        # Initialize agent with tools
+        await self._init_agent()
+        
         # Setup IO handlers
         await self.setup_io_handlers()
 
