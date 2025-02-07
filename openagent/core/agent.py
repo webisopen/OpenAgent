@@ -122,7 +122,7 @@ class OpenAgent:
         logger.info("Loading tools...")
         tools = []
 
-        for tool_name in self.config.tools:
+        for tool_name, tool_config in self.config.tools.items():
             try:
                 module = __import__(f"openagent.tools.{tool_name}", fromlist=["*"])
 
@@ -144,9 +144,13 @@ class OpenAgent:
                                 config_class = config_obj
                                 break
                         
-                        # Setup the tool with default config if available
+                        # Setup the tool with config from yaml if available, otherwise use default
                         if config_class:
-                            await tool_instance.setup(config_class())
+                            if tool_config:
+                                config_instance = config_class(**tool_config)
+                            else:
+                                config_instance = config_class()
+                            await tool_instance.setup(config_instance)
                             
                         # Convert to Function object and add to tools list
                         tools.append(tool_instance.to_function())

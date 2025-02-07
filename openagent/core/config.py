@@ -44,8 +44,8 @@ class AgentConfig(BaseModel):
     llm: LLMConfig = Field(
         default_factory=LLMConfig, description="Language model configuration"
     )
-    tools: List[str] = Field(
-        default_factory=list, description="List of tool names to load"
+    tools: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict, description="Tool configurations"
     )
     io: IOConfig = Field(
         default_factory=IOConfig, description="IO handler configurations"

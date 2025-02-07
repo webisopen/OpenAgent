@@ -31,4 +31,6 @@ io:
       use_colors: true
 
 tools:
-  - stock_price
+  token_price:
+    coingecko_api_key: ${COINGECKO_API_KEY}
+

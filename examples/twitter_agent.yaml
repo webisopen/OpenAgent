@@ -44,4 +44,5 @@ io:
         access_token_secret: ${TWITTER_ACCESS_TOKEN_SECRET}
 
 tools:
-  - stock_price
+  stock_price: {}
+
