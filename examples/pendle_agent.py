@@ -3,7 +3,7 @@ from loguru import logger
 
 if __name__ == "__main__":
     try:
-        cli(["start", "--file", "twitter_monitor_agent.yaml"])
+        cli(["start", "--file", "pendle_agent.yaml"])
     except Exception as e:
         logger.error(f"Error occurred: {str(e)}")
         raise
