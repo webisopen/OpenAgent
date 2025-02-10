@@ -1,10 +1,7 @@
-import asyncio
 from io import BytesIO
 
 from docling.datamodel.base_models import DocumentStream
 from docling.document_converter import DocumentConverter
-
-from openagent.inputs.pendle_knowledge_base.recursive_url_loader import RecursiveUrlLoader
 
 
 def docling_extractor(html: str) -> str:

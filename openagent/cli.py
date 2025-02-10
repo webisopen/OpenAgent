@@ -5,7 +5,7 @@ import signal
 import click
 from dotenv import load_dotenv
 
-from openagent.core.agent import OpenAgent
+from openagent.agent.agent import OpenAgent
 
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 

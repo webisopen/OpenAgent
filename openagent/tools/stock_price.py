@@ -1,7 +1,7 @@
 import yfinance as yf
 from pydantic import BaseModel
 
-from openagent.core.interfaces.tool import Tool
+from openagent.core.tool import Tool
 
 
 class StockPriceConfig(BaseModel):

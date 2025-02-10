@@ -9,10 +9,10 @@ from agno.storage.agent.sqlite import SqliteAgentStorage
 from loguru import logger
 from pydantic import BaseModel
 
-from openagent.core.config import AgentConfig
-from openagent.core.interfaces.input import Input, InputMessage
-from openagent.core.interfaces.output import Output
-from openagent.core.interfaces.tool import Tool
+from openagent.agent.config import AgentConfig
+from openagent.core.io.input import Input, InputMessage
+from openagent.core.io.output import Output
+from openagent.core.tool import Tool
 
 
 def print_banner():
@@ -190,7 +190,7 @@ class OpenAgent:
         # Setup inputs
         for input_name, input_config in self.config.io.inputs.items():
             try:
-                module_path = f"openagent.inputs.{input_name}"
+                module_path = f"openagent.io.inputs.{input_name}"
                 InputClass = self._get_concrete_implementation(module_path, Input)
                 if InputClass is None:
                     raise ImportError(
@@ -211,7 +211,7 @@ class OpenAgent:
         # Setup outputs
         for output_name, output_config in self.config.io.outputs.items():
             try:
-                module_path = f"openagent.outputs.{output_name}"
+                module_path = f"openagent.io.outputs.{output_name}"
                 OutputClass = self._get_concrete_implementation(module_path, Output)
                 if OutputClass is None:
                     raise ImportError(
