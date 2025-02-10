@@ -12,7 +12,9 @@ try:
     from openai.types.chat.chat_completion_message import ChatCompletionMessage
     from openai.types.completion_usage import CompletionUsage
 except ModuleNotFoundError:
-    raise ImportError("`openai` not installed. Please install using `pip install openai`")
+    raise ImportError(
+        "`openai` not installed. Please install using `pip install openai`"
+    )
 
 
 @dataclass
@@ -54,9 +56,14 @@ class DeepSeek(OpenAILike):
             if hasattr(response_message, "reasoning_content")
             else None,
         )
-        if response_message.tool_calls is not None and len(response_message.tool_calls) > 0:
+        if (
+            response_message.tool_calls is not None
+            and len(response_message.tool_calls) > 0
+        ):
             try:
-                assistant_message.tool_calls = [t.model_dump() for t in response_message.tool_calls]
+                assistant_message.tool_calls = [
+                    t.model_dump() for t in response_message.tool_calls
+                ]
             except Exception as e:
                 logger.warning(f"Error processing tool calls: {e}")
         if hasattr(response_message, "audio") and response_message.audio is not None:

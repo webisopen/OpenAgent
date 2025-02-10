@@ -15,7 +15,7 @@ def docling_extractor(html: str) -> str:
     """
     try:
         # Create document stream from HTML
-        buf = BytesIO(html.encode('utf-8'))
+        buf = BytesIO(html.encode("utf-8"))
         source = DocumentStream(name="webpage.html", stream=buf)
 
         # Convert to markdown using docling

@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "OpenAgent is a framework for rapidly launching functional AI agents powered by Open."
 authors = ["RSS3 Network <contact@rss3.io>"]
 readme = "README.md"
-packages = [{include = "openagent"}]
+packages = [{ include = "openagent" }]
 
 [tool.poetry.scripts]
 openagent = "openagent.cli:cli"
@@ -35,7 +35,7 @@ warn_return_any = true
 check_untyped_defs = true
 show_error_codes = true
 disable_error_code = ["arg-type", "call-arg", "union-attr", "operator", "unused-ignore",
-    "override", "attr-defined", "valid-type",
+    "override", "attr-defined", "valid-type", "import-not-found", "import-untyped",
     "import-untyped", "assignment", "no-any-return", "no-any-unimported", "import-not-found", "misc"]
 
 

@@ -6,8 +6,10 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.indexes import index, SQLRecordManager
 from langchain.schema import Document
 
-from openagent.sources.inputs.pendle_knowledge_base.extractor import docling_extractor
-from openagent.sources.inputs.pendle_knowledge_base.recursive_url_loader import RecursiveUrlLoader
+from openagent.tools.pendle_knowledge_base.extractor import docling_extractor
+from openagent.tools.pendle_knowledge_base.recursive_url_loader import (
+    RecursiveUrlLoader,
+)
 
 
 async def main():
@@ -33,13 +35,14 @@ async def main():
         vector_store = FAISS.load_local(index_dir, embeddings)
     else:
         # Create an empty vector store if it doesn't exist
-        vector_store = FAISS.from_documents([Document(page_content="", metadata={})], embeddings)
+        vector_store = FAISS.from_documents(
+            [Document(page_content="", metadata={})], embeddings
+        )
         vector_store.save_local(index_dir)
 
     # Initialize record manager for tracking document changes
     record_manager = SQLRecordManager(
-        namespace="pendle_docs", 
-        db_url="sqlite:///pendle_index.db"
+        namespace="pendle_docs", db_url="sqlite:///pendle_index.db"
     )
     await record_manager.acreate_schema()
 
@@ -58,7 +61,7 @@ async def main():
         record_manager,
         vector_store,
         cleanup="incremental",
-        source_id_key="source"
+        source_id_key="source",
     )
 
     print("\nIndexing Results:")
@@ -78,10 +81,10 @@ async def main():
     for i, doc in enumerate(results, 1):
         print(f"\nResult {i}:")
         print("Content:", doc.page_content[:200])
-        print("Source:", doc.metadata.get('source', 'N/A'))
+        print("Source:", doc.metadata.get("source", "N/A"))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from dotenv import load_dotenv
 
     load_dotenv()

@@ -33,7 +33,9 @@ class OllamaHermes(Ollama):
     name: str = "OllamaHermes"
     provider: str = "Ollama"
 
-    def handle_tool_call_chunk(self, content, tool_call_buffer, message_data) -> Tuple[str, bool]:
+    def handle_tool_call_chunk(
+        self, content, tool_call_buffer, message_data
+    ) -> Tuple[str, bool]:
         """
         Handle a tool call chunk for response stream.
 
@@ -67,9 +69,13 @@ class OllamaHermes(Ollama):
 
                 function_def = {
                     "name": tool_name,
-                    "arguments": json.dumps(tool_args) if tool_args is not None else None,
+                    "arguments": json.dumps(tool_args)
+                    if tool_args is not None
+                    else None,
                 }
-                message_data.tool_calls.append({"type": "function", "function": function_def})
+                message_data.tool_calls.append(
+                    {"type": "function", "function": function_def}
+                )
         return message_data
 
     def response_stream(self, messages: List[Message]) -> Iterator[ModelResponse]:
@@ -96,16 +102,26 @@ class OllamaHermes(Ollama):
                 if metrics.output_tokens == 1:
                     metrics.time_to_first_token = metrics.response_timer.elapsed
 
-                message_data.response_content_chunk = message_data.response_message.get("content", "").strip("`")
+                message_data.response_content_chunk = message_data.response_message.get(
+                    "content", ""
+                ).strip("`")
 
             if message_data.response_content_chunk:
-                if message_data.response_content_chunk.strip().startswith("</tool_call>"):
+                if message_data.response_content_chunk.strip().startswith(
+                    "</tool_call>"
+                ):
                     message_data.end_tool_call = True
                 if message_data.in_tool_call:
-                    message_data.tool_call_chunk, message_data.in_tool_call = self.handle_tool_call_chunk(
-                        message_data.response_content_chunk, message_data.tool_call_chunk, message_data
+                    message_data.tool_call_chunk, message_data.in_tool_call = (
+                        self.handle_tool_call_chunk(
+                            message_data.response_content_chunk,
+                            message_data.tool_call_chunk,
+                            message_data,
+                        )
                     )
-                elif message_data.response_content_chunk.strip().startswith("<tool_call>"):
+                elif message_data.response_content_chunk.strip().startswith(
+                    "<tool_call>"
+                ):
                     message_data.in_tool_call = True
                 else:
                     yield ModelResponse(content=message_data.response_content_chunk)
@@ -119,14 +135,18 @@ class OllamaHermes(Ollama):
         message_data = self._format_tool_calls(message_data)
 
         # -*- Create assistant message
-        assistant_message = Message(role="assistant", content=message_data.response_content)
+        assistant_message = Message(
+            role="assistant", content=message_data.response_content
+        )
 
         if len(message_data.tool_calls) > 0:
             assistant_message.tool_calls = message_data.tool_calls
 
         # -*- Update usage metrics
         self.update_usage_metrics(
-            assistant_message=assistant_message, metrics=metrics, response=message_data.response_usage
+            assistant_message=assistant_message,
+            metrics=metrics,
+            response=message_data.response_usage,
         )
 
         # -*- Add assistant message to messages
@@ -137,7 +157,10 @@ class OllamaHermes(Ollama):
         metrics.log()
 
         # -*- Handle tool calls
-        if assistant_message.tool_calls is not None and len(assistant_message.tool_calls) > 0:
+        if (
+            assistant_message.tool_calls is not None
+            and len(assistant_message.tool_calls) > 0
+        ):
             yield from self.handle_stream_tool_calls(assistant_message, messages)
             yield from self.handle_post_tool_call_messages_stream(messages=messages)
         logger.debug("---------- Ollama OllamaHermes Response End ----------")
@@ -166,22 +189,32 @@ class OllamaHermes(Ollama):
                 if metrics.output_tokens == 1:
                     metrics.time_to_first_token = metrics.response_timer.elapsed
 
-                message_data.response_content_chunk = message_data.response_message.get("content", "").strip("`")
-                message_data.response_content_chunk = message_data.response_message.get("content", "").strip(
-                    "<|end_of_text|>"
-                )
-                message_data.response_content_chunk = message_data.response_message.get("content", "").strip(
-                    "<|begin_of_text|>"
-                )
+                message_data.response_content_chunk = message_data.response_message.get(
+                    "content", ""
+                ).strip("`")
+                message_data.response_content_chunk = message_data.response_message.get(
+                    "content", ""
+                ).strip("<|end_of_text|>")
+                message_data.response_content_chunk = message_data.response_message.get(
+                    "content", ""
+                ).strip("<|begin_of_text|>")
 
             if message_data.response_content_chunk:
-                if message_data.response_content_chunk.strip().startswith("</tool_call>"):
+                if message_data.response_content_chunk.strip().startswith(
+                    "</tool_call>"
+                ):
                     message_data.end_tool_call = True
                 if message_data.in_tool_call:
-                    message_data.tool_call_chunk, message_data.in_tool_call = self.handle_tool_call_chunk(
-                        message_data.response_content_chunk, message_data.tool_call_chunk, message_data
+                    message_data.tool_call_chunk, message_data.in_tool_call = (
+                        self.handle_tool_call_chunk(
+                            message_data.response_content_chunk,
+                            message_data.tool_call_chunk,
+                            message_data,
+                        )
                     )
-                elif message_data.response_content_chunk.strip().startswith("<tool_call>"):
+                elif message_data.response_content_chunk.strip().startswith(
+                    "<tool_call>"
+                ):
                     message_data.in_tool_call = True
                 else:
                     yield ModelResponse(content=message_data.response_content_chunk)
@@ -195,14 +228,18 @@ class OllamaHermes(Ollama):
         message_data = self._format_tool_calls(message_data)
 
         # -*- Create assistant message
-        assistant_message = Message(role="assistant", content=message_data.response_content)
+        assistant_message = Message(
+            role="assistant", content=message_data.response_content
+        )
 
         if len(message_data.tool_calls) > 0:
             assistant_message.tool_calls = message_data.tool_calls
 
         # -*- Update usage metrics
         self.update_usage_metrics(
-            assistant_message=assistant_message, metrics=metrics, response=message_data.response_usage
+            assistant_message=assistant_message,
+            metrics=metrics,
+            response=message_data.response_usage,
         )
 
         # -*- Add assistant message to messages
@@ -213,9 +250,16 @@ class OllamaHermes(Ollama):
         metrics.log()
 
         # -*- Handle tool calls
-        if assistant_message.tool_calls is not None and len(assistant_message.tool_calls) > 0:
-            for tool_call_response in self.handle_stream_tool_calls(assistant_message, messages):
+        if (
+            assistant_message.tool_calls is not None
+            and len(assistant_message.tool_calls) > 0
+        ):
+            for tool_call_response in self.handle_stream_tool_calls(
+                assistant_message, messages
+            ):
                 yield tool_call_response
-            async for post_tool_call_response in self.ahandle_post_tool_call_messages_stream(messages=messages):
+            async for (
+                post_tool_call_response
+            ) in self.ahandle_post_tool_call_messages_stream(messages=messages):
                 yield post_tool_call_response
         logger.debug("---------- Ollama OllamaHermes Async Response End ----------")

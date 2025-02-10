@@ -20,7 +20,9 @@ try:
     from anthropic.types import Message as AnthropicMessage
     from anthropic.types import TextBlock, TextDelta, ToolUseBlock, Usage
 except (ModuleNotFoundError, ImportError):
-    raise ImportError("`anthropic` not installed. Please install using `pip install anthropic`")
+    raise ImportError(
+        "`anthropic` not installed. Please install using `pip install anthropic`"
+    )
 
 
 @dataclass
@@ -40,7 +42,12 @@ def _format_image_for_message(image: Image) -> Optional[Dict[str, Any]]:
     import base64
     import imghdr
 
-    type_mapping = {"jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif", "webp": "image/webp"}
+    type_mapping = {
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "gif": "image/gif",
+        "webp": "image/webp",
+    }
 
     try:
         # Case 1: Image is a URL
@@ -51,7 +58,11 @@ def _format_image_for_message(image: Image) -> Optional[Dict[str, Any]]:
         elif image.filepath is not None:
             from pathlib import Path
 
-            path = Path(image.filepath) if isinstance(image.filepath, str) else image.filepath
+            path = (
+                Path(image.filepath)
+                if isinstance(image.filepath, str)
+                else image.filepath
+            )
             if path.exists() and path.is_file():
                 with open(image.filepath, "rb") as f:
                     content_bytes = f.read()
@@ -121,7 +132,11 @@ def _format_messages(messages: List[Message]) -> Tuple[List[Dict[str, str]], str
                         content.append(image_content)
 
         # Handle tool calls from history
-        elif message.role == "assistant" and isinstance(message.content, str) and message.tool_calls:
+        elif (
+            message.role == "assistant"
+            and isinstance(message.content, str)
+            and message.tool_calls
+        ):
             if message.content:
                 content = [TextBlock(text=message.content, type="text")]
             else:
@@ -175,7 +190,9 @@ class Claude(Model):
 
         self.api_key = self.api_key or getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
-            logger.error("ANTHROPIC_API_KEY not set. Please set the ANTHROPIC_API_KEY environment variable.")
+            logger.error(
+                "ANTHROPIC_API_KEY not set. Please set the ANTHROPIC_API_KEY environment variable."
+            )
 
         client_params.update(
             {
@@ -263,7 +280,9 @@ class Claude(Model):
 
             for param_name, param_info in properties.items():
                 param_type = param_info.get("type", "")
-                param_type_list: List[str] = [param_type] if isinstance(param_type, str) else param_type or []
+                param_type_list: List[str] = (
+                    [param_type] if isinstance(param_type, str) else param_type or []
+                )
 
                 if "null" not in param_type_list:
                     required_params.append(param_name)
@@ -346,9 +365,13 @@ class Claude(Model):
             metrics.total_tokens = metrics.input_tokens + metrics.output_tokens
 
         self._update_model_metrics(metrics_for_run=metrics)
-        self._update_assistant_message_metrics(assistant_message=assistant_message, metrics_for_run=metrics)
+        self._update_assistant_message_metrics(
+            assistant_message=assistant_message, metrics_for_run=metrics
+        )
 
-    def create_assistant_message(self, response: AnthropicMessage, metrics: Metrics) -> Tuple[Message, str, List[str]]:
+    def create_assistant_message(
+        self, response: AnthropicMessage, metrics: Metrics
+    ) -> Tuple[Message, str, List[str]]:
         """
         Create an assistant message from the response.
 
@@ -406,12 +429,17 @@ class Claude(Model):
             assistant_message.tool_calls = message_data.tool_calls
 
         # -*- Update usage metrics
-        self.update_usage_metrics(assistant_message, message_data.response_usage, metrics)
+        self.update_usage_metrics(
+            assistant_message, message_data.response_usage, metrics
+        )
 
         return assistant_message, message_data.response_content, message_data.tool_ids
 
     def format_function_call_results(
-        self, function_call_results: List[Message], tool_ids: List[str], messages: List[Message]
+        self,
+        function_call_results: List[Message],
+        tool_ids: List[str],
+        messages: List[Message],
     ) -> None:
         """
         Handle the results of function calls.
@@ -452,7 +480,10 @@ class Claude(Model):
         Returns:
             Optional[ModelResponse]: The model response.
         """
-        if assistant_message.tool_calls is not None and len(assistant_message.tool_calls) > 0:
+        if (
+            assistant_message.tool_calls is not None
+            and len(assistant_message.tool_calls) > 0
+        ):
             function_calls_to_run, function_call_results = self._prepare_function_calls(
                 assistant_message=assistant_message,
                 messages=messages,
@@ -464,7 +495,8 @@ class Claude(Model):
                 function_call_results=function_call_results,
             ):
                 if (
-                    function_call_response.event == ModelResponseEvent.tool_call_completed.value
+                    function_call_response.event
+                    == ModelResponseEvent.tool_call_completed.value
                     and function_call_response.tool_calls is not None
                 ):
                     model_response.tool_calls.extend(function_call_response.tool_calls)  # type: ignore  # model_response.tool_calls are initialized before calling this method
@@ -481,7 +513,10 @@ class Claude(Model):
         model_response: ModelResponse,
         tool_ids: List[str],
     ) -> Optional[ModelResponse]:
-        if assistant_message.tool_calls is not None and len(assistant_message.tool_calls) > 0:
+        if (
+            assistant_message.tool_calls is not None
+            and len(assistant_message.tool_calls) > 0
+        ):
             function_calls_to_run, function_call_results = self._prepare_function_calls(
                 assistant_message=assistant_message,
                 messages=messages,
@@ -489,10 +524,13 @@ class Claude(Model):
             )
 
             async for function_call_response in self.arun_function_calls(
-                function_calls=function_calls_to_run, function_call_results=function_call_results, tool_role="tool"
+                function_calls=function_calls_to_run,
+                function_call_results=function_call_results,
+                tool_role="tool",
             ):
                 if (
-                    function_call_response.event == ModelResponseEvent.tool_call_completed.value
+                    function_call_response.event
+                    == ModelResponseEvent.tool_call_completed.value
                     and function_call_response.tool_calls is not None
                 ):
                     model_response.tool_calls.extend(function_call_response.tool_calls)  # type: ignore  # model_response.tool_calls are initialized before calling this method
@@ -534,7 +572,12 @@ class Claude(Model):
         metrics_for_run.log()
 
         # -*- Handle tool calls
-        if self.handle_tool_calls(assistant_message, messages, model_response, tool_ids) is not None:
+        if (
+            self.handle_tool_calls(
+                assistant_message, messages, model_response, tool_ids
+            )
+            is not None
+        ):
             response_after_tool_calls = self.response(messages=messages)
             if response_after_tool_calls.content is not None:
                 if model_response.content is None:
@@ -566,14 +609,21 @@ class Claude(Model):
         Yields:
             Iterator[ModelResponse]: Yields model responses during function execution.
         """
-        if assistant_message.tool_calls is not None and len(assistant_message.tool_calls) > 0:
+        if (
+            assistant_message.tool_calls is not None
+            and len(assistant_message.tool_calls) > 0
+        ):
             yield ModelResponse(content="\n\n")
-            function_calls_to_run = self._get_function_calls_to_run(assistant_message, messages)
+            function_calls_to_run = self._get_function_calls_to_run(
+                assistant_message, messages
+            )
             function_call_results: List[Message] = []
 
             if self.show_tool_calls:
                 if len(function_calls_to_run) == 1:
-                    yield ModelResponse(content=f" - Running: {function_calls_to_run[0].get_call_str()}\n\n")
+                    yield ModelResponse(
+                        content=f" - Running: {function_calls_to_run[0].get_call_str()}\n\n"
+                    )
                 elif len(function_calls_to_run) > 1:
                     yield ModelResponse(content="Running:")
                     for _f in function_calls_to_run:
@@ -581,7 +631,8 @@ class Claude(Model):
                     yield ModelResponse(content="\n\n")
 
             for intermediate_model_response in self.run_function_calls(
-                function_calls=function_calls_to_run, function_call_results=function_call_results
+                function_calls=function_calls_to_run,
+                function_call_results=function_call_results,
             ):
                 yield intermediate_model_response
 
@@ -641,7 +692,9 @@ class Claude(Model):
             assistant_message.tool_calls = message_data.tool_calls
 
         # -*- Update usage metrics
-        self.update_usage_metrics(assistant_message, message_data.response_usage, metrics)
+        self.update_usage_metrics(
+            assistant_message, message_data.response_usage, metrics
+        )
 
         # -*- Add assistant message to messages
         messages.append(assistant_message)
@@ -650,8 +703,13 @@ class Claude(Model):
         assistant_message.log()
         metrics.log()
 
-        if assistant_message.tool_calls is not None and len(assistant_message.tool_calls) > 0:
-            yield from self.handle_stream_tool_calls(assistant_message, messages, message_data.tool_ids)
+        if (
+            assistant_message.tool_calls is not None
+            and len(assistant_message.tool_calls) > 0
+        ):
+            yield from self.handle_stream_tool_calls(
+                assistant_message, messages, message_data.tool_ids
+            )
             yield from self.response_stream(messages=messages)
         logger.debug("---------- Claude Response End ----------")
 
@@ -734,7 +792,12 @@ class Claude(Model):
         metrics_for_run.log()
 
         # -*- Handle tool calls
-        if await self.ahandle_tool_calls(assistant_message, messages, model_response, tool_ids) is not None:
+        if (
+            await self.ahandle_tool_calls(
+                assistant_message, messages, model_response, tool_ids
+            )
+            is not None
+        ):
             response_after_tool_calls = await self.aresponse(messages=messages)
             if response_after_tool_calls.content is not None:
                 if model_response.content is None:
@@ -812,7 +875,9 @@ class Claude(Model):
             assistant_message.tool_calls = message_data.tool_calls
 
         # -*- Update usage metrics
-        self.update_usage_metrics(assistant_message, message_data.response_usage, metrics)
+        self.update_usage_metrics(
+            assistant_message, message_data.response_usage, metrics
+        )
 
         # -*- Add assistant message to messages
         messages.append(assistant_message)
@@ -821,12 +886,19 @@ class Claude(Model):
         assistant_message.log()
         metrics.log()
 
-        if assistant_message.tool_calls is not None and len(assistant_message.tool_calls) > 0:
+        if (
+            assistant_message.tool_calls is not None
+            and len(assistant_message.tool_calls) > 0
+        ):
             async for tool_call_response in self.ahandle_stream_tool_calls(
-                assistant_message=assistant_message, messages=messages, tool_ids=message_data.tool_ids
+                assistant_message=assistant_message,
+                messages=messages,
+                tool_ids=message_data.tool_ids,
             ):
                 yield tool_call_response
-            async for post_tool_call_response in self.aresponse_stream(messages=messages):
+            async for post_tool_call_response in self.aresponse_stream(
+                messages=messages
+            ):
                 yield post_tool_call_response
         logger.debug("---------- Claude Async Response End ----------")
 
@@ -847,14 +919,21 @@ class Claude(Model):
         Yields:
             Any: Yields model responses during function execution.
         """
-        if assistant_message.tool_calls is not None and len(assistant_message.tool_calls) > 0:
+        if (
+            assistant_message.tool_calls is not None
+            and len(assistant_message.tool_calls) > 0
+        ):
             yield ModelResponse(content="\n\n")
-            function_calls_to_run = self._get_function_calls_to_run(assistant_message, messages)
+            function_calls_to_run = self._get_function_calls_to_run(
+                assistant_message, messages
+            )
             function_call_results: List[Message] = []
 
             if self.show_tool_calls:
                 if len(function_calls_to_run) == 1:
-                    yield ModelResponse(content=f" - Running: {function_calls_to_run[0].get_call_str()}\n\n")
+                    yield ModelResponse(
+                        content=f" - Running: {function_calls_to_run[0].get_call_str()}\n\n"
+                    )
                 elif len(function_calls_to_run) > 1:
                     yield ModelResponse(content="Running:")
                     for _f in function_calls_to_run:
@@ -862,7 +941,8 @@ class Claude(Model):
                     yield ModelResponse(content="\n\n")
 
             async for intermediate_model_response in self.arun_function_calls(
-                function_calls=function_calls_to_run, function_call_results=function_call_results
+                function_calls=function_calls_to_run,
+                function_call_results=function_call_results,
             ):
                 yield intermediate_model_response
 

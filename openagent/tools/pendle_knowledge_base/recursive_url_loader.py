@@ -359,7 +359,12 @@ class RecursiveUrlLoader(BaseLoader):
         self.proxies = proxies
 
     def _get_child_links_recursive(
-        self, url: str, visited: Set[str], *, depth: int = 0, pbar: Optional[tqdm] = None
+        self,
+        url: str,
+        visited: Set[str],
+        *,
+        depth: int = 0,
+        pbar: Optional[tqdm] = None,
     ) -> Iterator[Document]:
         """Recursively get all child links starting with the path of the input URL.
 
@@ -524,7 +529,9 @@ class RecursiveUrlLoader(BaseLoader):
         When use_async is True, this function will not be lazy,
         but it will still work in the expected way, just not lazy."""
         visited: Set[str] = set()
-        pbar = tqdm(desc="Crawling pages", unit="page", position=0, leave=True, mininterval=0.1)
+        pbar = tqdm(
+            desc="Crawling pages", unit="page", position=0, leave=True, mininterval=0.1
+        )
         try:
             if self.use_async:
                 results = asyncio.run(
@@ -539,18 +546,24 @@ class RecursiveUrlLoader(BaseLoader):
     async def alazy_load(self) -> AsyncIterator[Document]:
         """Async lazy load of web pages."""
         if not self.use_async:
-            raise ValueError("Async loading forbidden when not initialized with use_async=True")
-            
+            raise ValueError(
+                "Async loading forbidden when not initialized with use_async=True"
+            )
+
         visited: Set[str] = set()
         session = aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(ssl=False),
             timeout=aiohttp.ClientTimeout(total=self.timeout),
             headers=self.headers,
         )
-        pbar = tqdm(desc="Crawling pages", unit="page", position=0, leave=True, mininterval=0.1)
-        
+        pbar = tqdm(
+            desc="Crawling pages", unit="page", position=0, leave=True, mininterval=0.1
+        )
+
         try:
-            results = await self._async_get_child_links_recursive(self.url, visited, session=session, pbar=pbar)
+            results = await self._async_get_child_links_recursive(
+                self.url, visited, session=session, pbar=pbar
+            )
             for doc in results:
                 yield doc
         finally:

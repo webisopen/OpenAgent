@@ -57,7 +57,9 @@ class OllamaTools(Ollama):
             request_params.update(self.request_params)
         return request_params
 
-    def create_assistant_message(self, response: Mapping[str, Any], metrics: Metrics) -> Message:
+    def create_assistant_message(
+        self, response: Mapping[str, Any], metrics: Metrics
+    ) -> Message:
         """
         Create an assistant message from the response.
 
@@ -82,22 +84,34 @@ class OllamaTools(Ollama):
         # -*- Check if the response contains a tool call
         try:
             if message_data.response_content is not None:
-                if "<tool_call>" in message_data.response_content and "</tool_call>" in message_data.response_content:
+                if (
+                    "<tool_call>" in message_data.response_content
+                    and "</tool_call>" in message_data.response_content
+                ):
                     # Break the response into tool calls
-                    tool_call_responses = message_data.response_content.split("</tool_call>")
+                    tool_call_responses = message_data.response_content.split(
+                        "</tool_call>"
+                    )
                     for tool_call_response in tool_call_responses:
                         # Add back the closing tag if this is not the last tool call
                         if tool_call_response != tool_call_responses[-1]:
                             tool_call_response += "</tool_call>"
 
-                        if "<tool_call>" in tool_call_response and "</tool_call>" in tool_call_response:
+                        if (
+                            "<tool_call>" in tool_call_response
+                            and "</tool_call>" in tool_call_response
+                        ):
                             # Extract tool call string from response
-                            tool_call_content = extract_tool_call_from_string(tool_call_response)
+                            tool_call_content = extract_tool_call_from_string(
+                                tool_call_response
+                            )
                             # Convert the extracted string to a dictionary
                             try:
                                 tool_call_dict = json.loads(tool_call_content)
                             except json.JSONDecodeError:
-                                raise ValueError(f"Could not parse tool call from: {tool_call_content}")
+                                raise ValueError(
+                                    f"Could not parse tool call from: {tool_call_content}"
+                                )
 
                             tool_call_name = tool_call_dict.get("name")
                             tool_call_args = tool_call_dict.get("arguments")
@@ -118,10 +132,14 @@ class OllamaTools(Ollama):
             assistant_message.tool_calls = message_data.tool_calls
 
         # -*- Update metrics
-        self.update_usage_metrics(assistant_message=assistant_message, metrics=metrics, response=response)
+        self.update_usage_metrics(
+            assistant_message=assistant_message, metrics=metrics, response=response
+        )
         return assistant_message
 
-    def format_function_call_results(self, function_call_results: List[Message], messages: List[Message]) -> None:
+    def format_function_call_results(
+        self, function_call_results: List[Message], messages: List[Message]
+    ) -> None:
         """
         Format the function call results and append them to the messages.
 
@@ -133,7 +151,9 @@ class OllamaTools(Ollama):
             for _fc_message in function_call_results:
                 _fc_message.content = (
                     "<tool_response>\n"
-                    + json.dumps({"name": _fc_message.tool_name, "content": _fc_message.content})
+                    + json.dumps(
+                        {"name": _fc_message.tool_name, "content": _fc_message.content}
+                    )
                     + "\n</tool_response>"
                 )
                 messages.append(_fc_message)
@@ -155,15 +175,24 @@ class OllamaTools(Ollama):
         Returns:
             Optional[ModelResponse]: The model response.
         """
-        if assistant_message.tool_calls is not None and len(assistant_message.tool_calls) > 0:
-            model_response.content = str(remove_tool_calls_from_string(assistant_message.get_content_string()))
+        if (
+            assistant_message.tool_calls is not None
+            and len(assistant_message.tool_calls) > 0
+        ):
+            model_response.content = str(
+                remove_tool_calls_from_string(assistant_message.get_content_string())
+            )
             model_response.content += "\n\n"
-            function_calls_to_run = self._get_function_calls_to_run(assistant_message, messages)
+            function_calls_to_run = self._get_function_calls_to_run(
+                assistant_message, messages
+            )
             function_call_results: List[Message] = []
 
             if self.show_tool_calls:
                 if len(function_calls_to_run) == 1:
-                    model_response.content += f" - Running: {function_calls_to_run[0].get_call_str()}\n\n"
+                    model_response.content += (
+                        f" - Running: {function_calls_to_run[0].get_call_str()}\n\n"
+                    )
                 elif len(function_calls_to_run) > 1:
                     model_response.content += "Running:"
                     for _f in function_calls_to_run:
@@ -207,7 +236,9 @@ class OllamaTools(Ollama):
                     metrics.time_to_first_token = metrics.response_timer.elapsed
 
             if message_data.response_message:
-                message_data.response_content_chunk = message_data.response_message.get("content", "")
+                message_data.response_content_chunk = message_data.response_message.get(
+                    "content", ""
+                )
 
             # Add response content to assistant message
             if message_data.response_content_chunk is not None:
@@ -215,7 +246,10 @@ class OllamaTools(Ollama):
 
             # Detect if response is a tool call
             # If the response is a tool call, it will start a <tool token
-            if not message_data.response_is_tool_call and "<tool" in message_data.response_content_chunk:
+            if (
+                not message_data.response_is_tool_call
+                and "<tool" in message_data.response_content_chunk
+            ):
                 message_data.response_is_tool_call = True
                 # logger.debug(f"Response is tool call: {message_data.response_is_tool_call}")
 
@@ -231,14 +265,23 @@ class OllamaTools(Ollama):
 
                 # If the response is a closing tool call tag and the tool call counter is 0,
                 # tool call response is complete
-                if message_data.tool_calls_counter == 0 and message_data.response_content_chunk.strip().endswith(">"):
+                if (
+                    message_data.tool_calls_counter == 0
+                    and message_data.response_content_chunk.strip().endswith(">")
+                ):
                     message_data.response_is_tool_call = False
                     # logger.debug(f"Response is tool call: {message_data.response_is_tool_call}")
                     message_data.is_closing_tool_call_tag = True
 
             # Yield content if not a tool call and content is not None
-            if not message_data.response_is_tool_call and message_data.response_content_chunk is not None:
-                if message_data.is_closing_tool_call_tag and message_data.response_content_chunk.strip().endswith(">"):
+            if (
+                not message_data.response_is_tool_call
+                and message_data.response_content_chunk is not None
+            ):
+                if (
+                    message_data.is_closing_tool_call_tag
+                    and message_data.response_content_chunk.strip().endswith(">")
+                ):
                     message_data.is_closing_tool_call_tag = False
                     continue
 
@@ -249,26 +292,40 @@ class OllamaTools(Ollama):
         metrics.stop_response_timer()
 
         # -*- Create assistant message
-        assistant_message = Message(role="assistant", content=message_data.response_content)
+        assistant_message = Message(
+            role="assistant", content=message_data.response_content
+        )
 
         # -*- Parse tool calls from the assistant message content
         try:
-            if "<tool_call>" in message_data.response_content and "</tool_call>" in message_data.response_content:
+            if (
+                "<tool_call>" in message_data.response_content
+                and "</tool_call>" in message_data.response_content
+            ):
                 # Break the response into tool calls
-                tool_call_responses = message_data.response_content.split("</tool_call>")
+                tool_call_responses = message_data.response_content.split(
+                    "</tool_call>"
+                )
                 for tool_call_response in tool_call_responses:
                     # Add back the closing tag if this is not the last tool call
                     if tool_call_response != tool_call_responses[-1]:
                         tool_call_response += "</tool_call>"
 
-                    if "<tool_call>" in tool_call_response and "</tool_call>" in tool_call_response:
+                    if (
+                        "<tool_call>" in tool_call_response
+                        and "</tool_call>" in tool_call_response
+                    ):
                         # Extract tool call string from response
-                        tool_call_content = extract_tool_call_from_string(tool_call_response)
+                        tool_call_content = extract_tool_call_from_string(
+                            tool_call_response
+                        )
                         # Convert the extracted string to a dictionary
                         try:
                             tool_call_dict = json.loads(tool_call_content)
                         except json.JSONDecodeError:
-                            raise ValueError(f"Could not parse tool call from: {tool_call_content}")
+                            raise ValueError(
+                                f"Could not parse tool call from: {tool_call_content}"
+                            )
 
                         tool_call_name = tool_call_dict.get("name")
                         tool_call_args = tool_call_dict.get("arguments")
@@ -292,7 +349,9 @@ class OllamaTools(Ollama):
 
         # -*- Update usage metrics
         self.update_usage_metrics(
-            assistant_message=assistant_message, metrics=metrics, response=message_data.response_usage
+            assistant_message=assistant_message,
+            metrics=metrics,
+            response=message_data.response_usage,
         )
 
         # -*- Add assistant message to messages
@@ -303,7 +362,10 @@ class OllamaTools(Ollama):
         metrics.log()
 
         # -*- Handle tool calls
-        if assistant_message.tool_calls is not None and len(assistant_message.tool_calls) > 0:
+        if (
+            assistant_message.tool_calls is not None
+            and len(assistant_message.tool_calls) > 0
+        ):
             yield from self.handle_stream_tool_calls(assistant_message, messages)
             yield from self.handle_post_tool_call_messages_stream(messages=messages)
         logger.debug("---------- Ollama Response End ----------")

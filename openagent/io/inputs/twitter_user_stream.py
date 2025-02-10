@@ -28,10 +28,7 @@ class TweetStreamListener(tweepy.StreamingClient):
         """Handle incoming tweets"""
         try:
             logger.info(f"Received tweet: {tweet.text}")
-            future = asyncio.run_coroutine_threadsafe(
-                self.callback(tweet),
-                self.loop
-            )
+            future = asyncio.run_coroutine_threadsafe(self.callback(tweet), self.loop)
             future.result()  # Wait for the coroutine to complete
         except Exception as e:
             logger.error(f"Error processing tweet: {e}")
@@ -52,7 +49,7 @@ class TwitterUserStreamInput(Input[TwitterUserStreamConfig]):
         super().__init__()
         self.client = None
         self.stream = None
-        self.tweet_queue = asyncio.Queue()
+        self.tweet_queue: asyncio.Queue = asyncio.Queue()
         self.usernames = []
         self.user_ids = []
         self._running = True
@@ -64,9 +61,7 @@ class TwitterUserStreamInput(Input[TwitterUserStreamConfig]):
         self.loop = asyncio.get_running_loop()
 
         # Initialize Twitter API v2 client
-        self.client = tweepy.Client(
-            bearer_token=config.credentials.bearer_token
-        )
+        self.client = tweepy.Client(bearer_token=config.credentials.bearer_token)
 
         self.usernames = config.usernames
 
@@ -82,9 +77,7 @@ class TwitterUserStreamInput(Input[TwitterUserStreamConfig]):
 
         # Initialize stream
         self.stream = TweetStreamListener(
-            config.credentials.bearer_token,
-            self._process_tweet,
-            self.loop
+            config.credentials.bearer_token, self._process_tweet, self.loop
         )
 
         # Clear existing rules
@@ -103,7 +96,9 @@ class TwitterUserStreamInput(Input[TwitterUserStreamConfig]):
         self.stream_thread.daemon = True
         self.stream_thread.start()
 
-        logger.info(f"Twitter user stream setup completed for users: {', '.join(self.usernames)}")
+        logger.info(
+            f"Twitter user stream setup completed for users: {', '.join(self.usernames)}"
+        )
 
     async def _process_tweet(self, tweet):
         """Process incoming tweets and add them to the queue"""
@@ -127,8 +122,8 @@ class TwitterUserStreamInput(Input[TwitterUserStreamConfig]):
         try:
             logger.info("Starting Twitter stream...")
             self.stream.filter(
-                tweet_fields=['created_at', 'author_id', 'public_metrics'],
-                expansions=['author_id']
+                tweet_fields=["created_at", "author_id", "public_metrics"],
+                expansions=["author_id"],
             )
         except Exception as e:
             logger.error(f"Error in _start_stream: {e}")

@@ -31,7 +31,7 @@ class TwitterPostOutput(Output[TwitterPostConfig]):
                 consumer_key=config.credentials.api_key,
                 consumer_secret=config.credentials.api_secret,
                 access_token=config.credentials.access_token,
-                access_token_secret=config.credentials.access_token_secret
+                access_token_secret=config.credentials.access_token_secret,
             )
             logger.info("Twitter post output setup completed")
         except Exception as e:
@@ -42,10 +42,8 @@ class TwitterPostOutput(Output[TwitterPostConfig]):
         """Post a tweet"""
         try:
             # Create the tweet
-            response = self.client.create_tweet(
-                text=message
-            )
-            
+            response = self.client.create_tweet(text=message)
+
             if response.data:
                 tweet_id = response.data["id"]
                 logger.info(f"Successfully posted tweet with ID: {tweet_id}")
@@ -53,4 +51,4 @@ class TwitterPostOutput(Output[TwitterPostConfig]):
             return False
         except Exception as e:
             logger.error(f"Error posting tweet: {e}")
-            return False 
+            return False
