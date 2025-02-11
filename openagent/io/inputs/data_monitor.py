@@ -100,12 +100,34 @@ class DataMonitorInput(Input[DataMonitorConfig]):
                         snapshots = self.session.query(DataMonitorContent)\
                             .filter(DataMonitorContent.uri == api.uri)\
                             .order_by(DataMonitorContent.created_at.desc())\
-                            .limit(2)
+                            .limit(2)\
+                            .all()
                         
-                        yield InputMessage(
-                            session_id=f"data_monitor_{api.uri}_{current_time}",
-                            message=snapshots
-                        )
+                        if len(snapshots) >= 2:
+                            # Prepare data for analysis
+                            current_data = snapshots[0].data
+                            previous_data = snapshots[1].data
+                            
+                            # Update context with relevant information
+                            self.context.update({
+                                "api_uri": api.uri,
+                                "api_description": api.description,
+                                "current_data": current_data,
+                                "previous_data": previous_data,
+                            })
+
+                            # Create analysis request message
+                            analysis_request = (
+                                f"Please analyze the following data changes:\n\n"
+                                f"API Description: {api.description}\n\n"
+                                f"Previous Data:\n {previous_data}\n\n"
+                                f"Current Data:\n {current_data}"
+                            )
+                            
+                            yield InputMessage(
+                                session_id=f"data_monitor_{api.uri}_{current_time.isoformat()}",
+                                message=analysis_request
+                            )
                         
                     except Exception as e:
                         print(f"Error fetching data from {api.uri}: {str(e)}")

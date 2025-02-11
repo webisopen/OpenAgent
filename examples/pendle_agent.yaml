@@ -3,6 +3,7 @@ name: "pendle agent"
 description: "A monitoring agent that analyzes Pendle market data and generates informative tweets about market insights"
 instructions:
   - "Analyze market data to identify key trends and changes in APY metrics"
+  - "Use the analyze_data tool to process market data and generate insights"
   - "Generate concise and engaging tweets based on the analysis results"
   - "Keep tweets informative yet easy to understand for the crypto community"
   - "Include relevant APY changes and market opportunities in tweets"
@@ -20,10 +21,6 @@ llm:
 
 io:
   inputs:
-    twitter_user_stream:
-      credentials:
-        bearer_token: ${TWITTER_BEARER_TOKEN}
-      usernames: ["ysdpk"]
     data_monitor:
       apis:
         - uri: "https://api-v2.pendle.finance/bff/v1/ve-pendle/pool-voter-apy"
@@ -63,5 +60,8 @@ io:
         access_token_secret: ${TWITTER_ACCESS_TOKEN_SECRET}
 
 tools:
-  token_price:
-    coingecko_api_key: ${COINGECKO_API_KEY}
+  data_analysis:
+    llm:
+      provider: "openai"
+      model: "gpt-4o"
+      temperature: 0.7

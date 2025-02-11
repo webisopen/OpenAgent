@@ -1,22 +1,19 @@
-from typing import Optional
+from typing import Any, Dict
 from pydantic import BaseModel
 from langchain.prompts import PromptTemplate
-from langchain.chat_models import ChatOpenAI
 from langchain.chains import LLMChain
 from openagent.core.tool import Tool
+from langchain.chat_models import init_chat_model
 
 class DataAnalysisConfig(BaseModel):
     """Configuration for data analysis tool"""
-    model_name: str = "gpt-3.5-turbo"
-    temperature: float = 0.7
-    api_key: Optional[str] = None
-
+    llm: Dict[str, Any]
+    
 class DataAnalysisTool(Tool):
     """Tool for analyzing data changes using LLM"""
     
     def __init__(self):
         super().__init__()
-        self.llm = None
         self.chain = None
         
     @property
@@ -30,10 +27,10 @@ class DataAnalysisTool(Tool):
     async def setup(self, config: DataAnalysisConfig) -> None:
         """Setup the analysis tool with LLM chain"""
         # Initialize LLM
-        self.llm = ChatOpenAI(
-            model_name=config.model_name,
-            temperature=config.temperature,
-            openai_api_key=config.api_key
+        llm = init_chat_model(
+            model=config.llm["model"],
+            model_provider=config.llm["provider"],
+            temperature=config.llm["temperature"]
         )
         
         # Create prompt template
@@ -59,7 +56,7 @@ class DataAnalysisTool(Tool):
         )
         
         # Create LLM chain
-        self.chain = LLMChain(llm=self.llm, prompt=prompt)
+        self.chain = LLMChain(llm=llm, prompt=prompt)
 
     async def __call__(self, description: str, data: str) -> str:
         """
