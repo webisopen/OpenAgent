@@ -1,3 +1,4 @@
+from textwrap import dedent
 from typing import Any, Dict
 
 from pydantic import BaseModel
@@ -6,11 +7,11 @@ from langchain.chains import LLMChain
 from openagent.core.tool import Tool
 from langchain.chat_models import init_chat_model
 
-class DataAnalysisConfig(BaseModel):
+class PendleMarketAnalysisConfig(BaseModel):
     """Configuration for data analysis tool"""
     llm: Dict[str, Any]
     
-class DataAnalysisTool(Tool):
+class PendleMarketAnalysisTool(Tool):
     """Tool for analyzing data changes using LLM"""
     
     def __init__(self):
@@ -19,13 +20,15 @@ class DataAnalysisTool(Tool):
         
     @property
     def name(self) -> str:
-        return "analyze_data"
+        return "pendle_market_analysis"
         
     @property 
     def description(self) -> str:
-        return "Analyzes changes and patterns in data based on provided description and data content"
+        return """You are a DeFi data analysis expert. 
+        You are hired by Pendle Finance to analyze their market data.
+        """
 
-    async def setup(self, config: DataAnalysisConfig) -> None:
+    async def setup(self, config: PendleMarketAnalysisConfig) -> None:
         """Setup the analysis tool with LLM chain"""
         # Initialize LLM
         llm = init_chat_model(
@@ -35,21 +38,25 @@ class DataAnalysisTool(Tool):
         )
         
         # Create prompt template
-        template = """
-        You are a data analysis expert. Analyze the following data and provide insights based on the given description.
-        
-        Description: {description}
+        template = dedent("""\
+        {description}
         
         Data: {data}
         
         Please provide a detailed analysis including:
-        1. Key changes and patterns identified
+        1. Key changes and patterns
         2. Notable trends
         3. Potential implications
         4. Any anomalies or points of interest
         
-        Analysis:
-        """
+        For each point, you must include:
+        - symbol
+        - protocol
+        - voterApy
+        - lastEpochChange
+        
+        Analysis:\
+        """)
         
         prompt = PromptTemplate(
             template=template,

@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import time
+from textwrap import dedent
 from typing import Dict, Any
 
 import pyfiglet
@@ -260,7 +261,7 @@ class OpenAgent:
         tools = await self._init_tools()
         self.agent = Agent(
             model=self._init_model(),
-            description=self.config.description,
+            description=dedent(self.config.description),
             tools=tools,
             add_history_to_messages=self.config.stateful,
             markdown=self.config.markdown,
