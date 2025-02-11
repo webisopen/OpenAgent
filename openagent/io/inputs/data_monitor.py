@@ -113,7 +113,7 @@ class DataMonitorInput(Input[DataMonitorConfig]):
                         analysis_request = (
                             f"Please analyze the following data changes:\n\n"
                             f"API Description: {api.description}\n\n"
-                            f"Data:\n {data}\n\n"
+                            f"Data:\n {diff_data}\n\n"
                         )
                         
                         yield InputMessage(
