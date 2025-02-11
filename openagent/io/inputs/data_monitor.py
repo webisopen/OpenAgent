@@ -105,14 +105,14 @@ class DataMonitorInput(Input[DataMonitorConfig]):
                         # Update context with relevant information
                         self.context.update({
                             "uri": api.uri,
-                            "description": api.description,
+                            # "description": api.description,
                             "data": diff_data
                         })
 
                         # Create analysis request message
                         analysis_request = (
                             f"Please analyze the following data changes:\n\n"
-                            f"API Description: {api.description}\n\n"
+                            # f"API Description: {api.description}\n\n"
                             f"Data:\n {diff_data}\n\n"
                         )
                         
@@ -146,8 +146,8 @@ class DataMonitorInput(Input[DataMonitorConfig]):
 
         def extract_pool_info(item: dict) -> dict:
             """Extract relevant pool information"""
-            root_fields = ('poolId', 'voterApy', 'lastEpochVoterApy', 'lastEpochChange')
-            pool_fields = ('name', 'symbol', 'address', 'protocol')
+            root_fields = ('lastEpochChange')
+            pool_fields = ('name', 'protocol')
 
             return {
                 **{k: item[k] for k in root_fields},

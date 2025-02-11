@@ -24,8 +24,8 @@ class PendleMarketAnalysisTool(Tool):
         
     @property 
     def description(self) -> str:
-        return """You are a DeFi data analysis expert. 
-        You are hired by Pendle Finance to analyze their market data.
+        return """You are a DeFi data analysis expert.
+        You receive the latest data from Pendle Finance in JSON and provide a structured analysis report.
         """
 
     async def setup(self, config: PendleMarketAnalysisConfig) -> None:
@@ -38,28 +38,29 @@ class PendleMarketAnalysisTool(Tool):
         )
         
         # Create prompt template
-        template = dedent("""\
+        template = """
         {description}
         
         Data: {data}
-        
-        Please provide a detailed analysis including:
+              
+        You must use the following fields in your analysis:
+        - name
+        - protocol
+        - voterApy
+        - lastEpochChange
+ 
+        Your analysis must include:
         1. Key changes and patterns
         2. Notable trends
         3. Potential implications
         4. Any anomalies or points of interest
-        
-        For each point, you must include:
-        - symbol
-        - protocol
-        - voterApy
-        - lastEpochChange
-        
-        Analysis:\
-        """)
+
+        Analysis:
+        """
         
         prompt = PromptTemplate(
-            template=template,            input_variables=["description", "data"]
+            template=template,
+            input_variables=["description", "data"]
         )
         
         # Create LLM chain
