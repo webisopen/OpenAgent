@@ -1,7 +1,9 @@
 import asyncio
+import json
+
 import aiohttp
 from datetime import datetime, timedelta
-from typing import AsyncIterator, Dict
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String, DateTime, create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -10,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from openagent.core.io.input import Input, InputMessage
 
 Base = declarative_base()
-
+    
 class DataMonitorContent(Base):
     __tablename__ = "data_monitor_snapshot"
 
@@ -92,42 +94,32 @@ class DataMonitorInput(Input[DataMonitorConfig]):
                 if current_time >= self.next_poll_times[api.uri]:
                     try:
                         # Fetch and store data
-                        await self._fetch_api_data(api)
+                        data = await self._fetch_api_data(api)
                         
                         # Update next poll time
                         self.next_poll_times[api.uri] = current_time + timedelta(seconds=api.polling_interval)
                         
-                        snapshots = self.session.query(DataMonitorContent)\
-                            .filter(DataMonitorContent.uri == api.uri)\
-                            .order_by(DataMonitorContent.created_at.desc())\
-                            .limit(2)\
-                            .all()
+                        # Filter data based on filters
+                        diff_data = self.filter_data(api.uri, data.data)
                         
-                        if len(snapshots) >= 2:
-                            # Prepare data for analysis
-                            current_data = snapshots[0].data
-                            previous_data = snapshots[1].data
-                            
-                            # Update context with relevant information
-                            self.context.update({
-                                "uri": api.uri,
-                                "description": api.description,
-                                "current_data": current_data,
-                                "previous_data": previous_data,
-                            })
+                        # Update context with relevant information
+                        self.context.update({
+                            "uri": api.uri,
+                            "description": api.description,
+                            "data": diff_data
+                        })
 
-                            # Create analysis request message
-                            analysis_request = (
-                                f"Please analyze the following data changes:\n\n"
-                                f"API Description: {api.description}\n\n"
-                                f"Previous Data:\n {previous_data}\n\n"
-                                f"Current Data:\n {current_data}"
-                            )
-                            
-                            yield InputMessage(
-                                session_id=f"data_monitor_{api.uri}_{current_time.isoformat()}",
-                                message=analysis_request
-                            )
+                        # Create analysis request message
+                        analysis_request = (
+                            f"Please analyze the following data changes:\n\n"
+                            f"API Description: {api.description}\n\n"
+                            f"Data:\n {data}\n\n"
+                        )
+                        
+                        yield InputMessage(
+                            session_id=f"data_monitor_{api.uri}_{current_time.isoformat()}",
+                            message=analysis_request
+                        )
                         
                     except Exception as e:
                         print(f"Error fetching data from {api.uri}: {str(e)}")
@@ -136,4 +128,41 @@ class DataMonitorInput(Input[DataMonitorConfig]):
             
             await asyncio.sleep(1)
 
-   
+    def filter_data(self, uri: str, data: str) -> dict | Any:
+        """Filter data based on rules"""
+        json_data = json.loads(data)
+        
+        path = uri.split("/")[-1]
+        
+        if path == "pool-voter-apy":
+            return self.filter_pool_voter_apy(json_data)
+        else:
+            return json_data
+    
+    def filter_pool_voter_apy(self, data: dict) -> dict:
+        """Filter pool voter apy data"""
+        if not data.get('results'):
+            return data
+
+        def extract_pool_info(item: dict) -> dict:
+            """Extract relevant pool information"""
+            root_fields = ('poolId', 'voterApy', 'lastEpochVoterApy', 'lastEpochChange')
+            pool_fields = ('name', 'symbol', 'address', 'protocol')
+
+            return {
+                **{k: item[k] for k in root_fields},
+                **{k: item['pool'][k] for k in pool_fields}
+            }
+
+        sorted_results = sorted(
+            data['results'],
+            key=lambda x: x.get('lastEpochChange', 0),
+            reverse=True
+        )
+
+        return {
+            'top_apy_changes': [extract_pool_info(item) for item in sorted_results[:5]],
+            'bottom_apy_changes': [extract_pool_info(item) for item in sorted_results[-5:]] if len(sorted_results) > 5 else [],
+            'timestamp': data.get('timestamp'),
+            'totalPools': data.get('totalPools')
+        }

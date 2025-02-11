@@ -33,11 +33,16 @@ io:
             Pendle Market APY API that provides APY information for Pendle markets across different chains and protocols.
             
             Response Structure:
-            - results: Array of pool objects containing:
-              - pool: Object with pool details (id, chainId, address, symbol, expiry, protocol, voterApy, etc.)
+            - top_apy_changes: Array of pools with highest APY increases, containing:
+              - poolId: Unique identifier for the pool
+              - name: Pool name
+              - symbol: Pool token symbol
+              - address: Pool contract address
+              - protocol: Protocol name (e.g., Aave, Karak, Fluid)
               - voterApy: Current voter APY value
-              - lastEpochVoterApy: Voter APY from last epoch
-              - lastEpochChange: Change in voter APY from last epoch
+              - lastEpochVoterApy: Previous epoch voter APY
+              - lastEpochChange: APY change from last epoch (sorted by this field)
+            - bottom_apy_changes: Array of pools with highest APY decreases, same structure as above
             - totalPools: Total number of pools available
             - timestamp: Data timestamp
             

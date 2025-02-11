@@ -40,9 +40,7 @@ class DataAnalysisTool(Tool):
         
         Description: {description}
         
-        Current Data: {current_data}
-        
-        Previous Data: {previous_data}
+        Data: {data}
         
         Please provide a detailed analysis including:
         1. Key changes and patterns identified
@@ -61,14 +59,13 @@ class DataAnalysisTool(Tool):
         # Create LLM chain
         self.chain = LLMChain(llm=llm, prompt=prompt)
 
-    async def __call__(self, description: str, current_data: str, previous_data) -> str:
+    async def __call__(self, description: str, data: str) -> str:
         """
         Analyze data using LLM
         
         Args:
             description (str): Description of what to analyze in the data
-            current_data (str): Current data content
-            previous_data (str): Previous data content
+			data (str): The data content to analyze
             
         Returns:
             str: Analysis results from the LLM
@@ -80,8 +77,7 @@ class DataAnalysisTool(Tool):
             # Run analysis chain
             response = await self.chain.arun(
                 description=description,
-                current_data=current_data,
-                previous_data=previous_data
+                data=data
             )
             return response.strip()
             
