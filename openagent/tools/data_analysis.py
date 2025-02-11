@@ -1,5 +1,6 @@
 from typing import Any, Dict
-from pydantic.v1 import BaseModel
+
+from pydantic import BaseModel
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from openagent.core.tool import Tool
