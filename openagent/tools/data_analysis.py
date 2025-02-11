@@ -1,5 +1,5 @@
 from typing import Any, Dict
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from openagent.core.tool import Tool
@@ -39,7 +39,9 @@ class DataAnalysisTool(Tool):
         
         Description: {description}
         
-        Data: {data}
+        Current Data: {current_data}
+        
+        Previous Data: {previous_data}
         
         Please provide a detailed analysis including:
         1. Key changes and patterns identified
@@ -52,19 +54,20 @@ class DataAnalysisTool(Tool):
         
         prompt = PromptTemplate(
             template=template,
-            input_variables=["description", "data"]
+            input_variables=["description", "current_data", "previous_data"]
         )
         
         # Create LLM chain
         self.chain = LLMChain(llm=llm, prompt=prompt)
 
-    async def __call__(self, description: str, data: str) -> str:
+    async def __call__(self, description: str, current_data: str, previous_data) -> str:
         """
         Analyze data using LLM
         
         Args:
             description (str): Description of what to analyze in the data
-            data (str): The data content to analyze
+            current_data (str): Current data content
+            previous_data (str): Previous data content
             
         Returns:
             str: Analysis results from the LLM
@@ -76,7 +79,8 @@ class DataAnalysisTool(Tool):
             # Run analysis chain
             response = await self.chain.arun(
                 description=description,
-                data=data
+                current_data=current_data,
+                previous_data=previous_data
             )
             return response.strip()
             

@@ -110,8 +110,8 @@ class DataMonitorInput(Input[DataMonitorConfig]):
                             
                             # Update context with relevant information
                             self.context.update({
-                                "api_uri": api.uri,
-                                "api_description": api.description,
+                                "uri": api.uri,
+                                "description": api.description,
                                 "current_data": current_data,
                                 "previous_data": previous_data,
                             })
