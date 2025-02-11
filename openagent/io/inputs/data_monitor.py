@@ -85,7 +85,7 @@ class DataMonitorInput(Input[DataMonitorConfig]):
                 
                 return snapshot
 
-    async def listen(self) -> AsyncIterator[DataMonitorContent]:
+    async def listen(self) -> AsyncIterator[InputMessage]:
         """Listen for data api"""
         while True:
             current_time = datetime.utcnow()

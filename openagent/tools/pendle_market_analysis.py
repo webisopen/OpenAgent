@@ -59,8 +59,7 @@ class PendleMarketAnalysisTool(Tool):
         """)
         
         prompt = PromptTemplate(
-            template=template,
-            input_variables=["description", "current_data", "previous_data"]
+            template=template,            input_variables=["description", "data"]
         )
         
         # Create LLM chain
