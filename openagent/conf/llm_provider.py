@@ -14,12 +14,11 @@ from openagent.conf.env import settings
 
 SUPPORTED_OLLAMA_MODELS = {
     "llama3.2": {"name": "llama3.2", "supports_tools": True},
-    "mistral-nemo": {"name": "mistral-nemo", "supports_tools": True},
     "darkmoon/olmo:7B-instruct-q6-k": {"name": "olmo", "supports_tools": False},
     'llama3.1': {'name': 'llama3.1', 'supports_tools': True},
     "qwen2.5": {"name": "qwen2.5", "supports_tools": True},
     "mistral": {"name": "mistral", "supports_tools": True},
-    "qwen2": {"name": "qwen2", "supports_tools": True},
+    "deepseek-r1:32b": {"name": "deepseek-r1", "supports_tools": False},
 }
 
 MODELS_ICONS = {
@@ -31,6 +30,7 @@ MODELS_ICONS = {
     "olmo": "/public/olmo.png",
     "qwen2": "/public/qwen.png",
     "qwen2.5": "/public/qwen.png",
+    "deepseek-r1":"public/deepseek.png",
 }
 
 
