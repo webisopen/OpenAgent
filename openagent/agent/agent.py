@@ -2,17 +2,16 @@ import asyncio
 import inspect
 import time
 from textwrap import dedent
-from typing import Dict, Any
 
 import pyfiglet
 from agno.agent import Agent
 from agno.storage.agent.sqlite import SqliteAgentStorage
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from loguru import logger
 from pydantic import BaseModel
 
 from openagent.agent.config import AgentConfig
-from openagent.core.io.input import Input, InputMessage
-from openagent.core.io.output import Output
 from openagent.core.tool import Tool
 
 
@@ -70,12 +69,9 @@ class OpenAgent:
         """
         self.config = config
         logger.info(f"Agent Name: {self.config.name}")
-        # Shared context between inputs and outputs
         self.shared_context: dict[object, object] = {}
         self.agent = None
-        # Initialize input/output handlers
-        self.inputs: list[Input] = []
-        self.outputs: list[Output] = []
+        self.scheduler = AsyncIOScheduler()
 
     def _init_model(self):
         """Initialize the language model based on config"""
@@ -88,7 +84,6 @@ class OpenAgent:
             "deepseek": ("agno.models.deepseek", "DeepSeek"),
             "gpt": ("agno.models.openai", "OpenAIChat"),
             "claude": ("agno.models.anthropic", "Claude"),
-            # Add more models here as needed
         }
 
         # Find the appropriate model class based on model name prefix
@@ -106,7 +101,6 @@ class OpenAgent:
         if model_class is None:
             logger.warning("No specific model class found, defaulting to OpenAI")
             from agno.models.openai import OpenAIChat
-
             model_class = OpenAIChat
 
         # Initialize and return the model
@@ -127,7 +121,7 @@ class OpenAgent:
             try:
                 module = __import__(f"openagent.tools.{tool_name}", fromlist=["*"])
 
-                # Import all concrete implementations of BaseFunction
+                # Import all concrete implementations of Tool
                 for name, obj in inspect.getmembers(module):
                     if (
                         inspect.isclass(obj)
@@ -148,7 +142,7 @@ class OpenAgent:
                                 config_class = config_obj
                                 break
 
-                        # Setup the tool with config from yaml if available, otherwise use default
+                        # Setup the tool with config from yaml if available
                         if config_class:
                             if tool_config:
                                 config_instance = config_class(**tool_config)
@@ -167,100 +161,22 @@ class OpenAgent:
 
         logger.success(f"Loaded {len(tools)} tools successfully")
         return tools
-
-    def _get_concrete_implementation(self, module_path, base_class):
-        """Helper function to get concrete implementation of a base class"""
-        try:
-            module = __import__(module_path, fromlist=["*"])
-            for name, obj in inspect.getmembers(module):
-                if (
-                    inspect.isclass(obj)
-                    and issubclass(obj, base_class)
-                    and not inspect.isabstract(obj)
-                ):
-                    return obj
-            return None
-        except ImportError:
-            logger.error(f"Failed to import module: {module_path}")
-            return None
-
-    async def _init_io_handlers(self):
-        """Initialize input and output handlers based on config"""
-        logger.info("Initializing I/O handlers...")
-
-        # Setup inputs
-        for input_name, input_config in self.config.io.inputs.items():
-            try:
-                module_path = f"openagent.io.inputs.{input_name}"
-                InputClass = self._get_concrete_implementation(module_path, Input)
-                if InputClass is None:
-                    raise ImportError(
-                        f"No concrete Input implementation found in {module_path}"
-                    )
-
-                input_handler = InputClass()
-                # Convert dict to appropriate config type if needed
-                if isinstance(input_config, dict):
-                    config_class = InputClass.__orig_bases__[0].__args__[0]
-                    input_config = config_class(**input_config)
-                await input_handler.setup(input_config)
-                self.inputs.append(input_handler)
-                logger.info(f"Initialized input handler: {input_name}")
-            except Exception as e:
-                logger.error(f"Failed to initialize input handler {input_name}: {e}")
-
-        # Setup outputs
-        for output_name, output_config in self.config.io.outputs.items():
-            try:
-                module_path = f"openagent.io.outputs.{output_name}"
-                OutputClass = self._get_concrete_implementation(module_path, Output)
-                if OutputClass is None:
-                    raise ImportError(
-                        f"No concrete Output implementation found in {module_path}"
-                    )
-
-                output_handler = OutputClass()
-                # Convert dict to appropriate config type if needed
-                if isinstance(output_config, dict):
-                    config_class = OutputClass.__orig_bases__[0].__args__[0]
-                    output_config = config_class(**output_config)
-                await output_handler.setup(output_config)
-                self.outputs.append(output_handler)
-                logger.info(f"Initialized output handler: {output_name}")
-            except Exception as e:
-                logger.error(f"Failed to initialize output handler {output_name}: {e}")
-
-        logger.success("I/O handlers initialization completed")
-
-    async def setup_io_handlers(self):
-        """Setup input and output handlers"""
-        await self._init_io_handlers()
-
-    async def handle_input(self, message: str, input_context: Dict[str, Any] = None):
-        """Handle input message"""
-        logger.debug(f"Processing input: {message[:100]}...")
-
-        # Update shared context with input context
-        if input_context:
-            self.shared_context.update(input_context)
-
-        response = await self.agent.arun(message)
-
-        # Send response to all configured outputs
-        for output in self.outputs:
-            try:
-                # Share context with output handler
-                output.context = self.shared_context.copy()
-                await output.send(response.content)
-                logger.debug(f"{output.__class__.__name__} output sent")
-            except Exception as e:
-                logger.error(f"Failed to send response through output: {e}")
+    async def start(self):
+        # Initialize agent with tools
+        await self._init_agent()
+        logger.success("Agent started successfully")
 
     async def _init_agent(self):
-        """Initialize the agent with tools"""
+        """Initialize the agent with model and tools"""
+        logger.info("Initializing agent...")
+        
+        # Initialize model and tools
+        model = self._init_model()
         tools = await self._init_tools()
+        
+        # Create agent instance with all necessary parameters
         self.agent = Agent(
-            model=self._init_model(),
+            model=model,
             description=dedent(self.config.description),
             tools=tools,
             add_history_to_messages=self.config.stateful,
@@ -274,35 +190,45 @@ class OpenAgent:
             else None,
         )
 
-    async def start(self):
-        # Initialize agent with tools
-        await self._init_agent()
+        # Initialize scheduled tasks if any are configured
+        if self.config.tasks:
+            self._init_scheduled_tasks()
 
-        # Setup IO handlers
-        await self.setup_io_handlers()
+        logger.success("Agent initialized successfully")
 
-        # Start listening on all input handlers
-        input_tasks = []
-        for input_handler in self.inputs:
-            input_tasks.append(asyncio.create_task(self._listen_input(input_handler)))
-
-        logger.success("Agent started successfully")
-        await asyncio.gather(*input_tasks)
-
-    async def _listen_input(self, input_handler: Input):
-        """Listen for messages from an input handler"""
-        try:
-            logger.info(
-                f"Listening for messages from {input_handler.__class__.__name__}"
+    def _init_scheduled_tasks(self):
+        """Initialize and start scheduled tasks from config"""
+        logger.info("Initializing scheduled tasks...")
+        
+        for task_id, task_config in self.config.tasks.items():
+            self.scheduler.add_job(
+                func=self._run_scheduled_task,
+                trigger=IntervalTrigger(seconds=task_config.interval),
+                args=[task_config.question],
+                id=task_id,
+                name=f"Task_{task_id}"
             )
-            await asyncio.sleep(0.2)
-            async for message in input_handler.listen():
-                if isinstance(message, InputMessage):
-                    # If it's an InputMessage, use its message field and update context with session_id
-                    self.agent.session_id = message.session_id
-                    await self.handle_input(message.message, input_handler.context)
-                else:
-                    # If it's a string, handle it directly
-                    await self.handle_input(message, input_handler.context)
+            logger.info(f"Scheduled task '{task_id}' with interval: {task_config.interval} seconds")
+        
+        # Start the scheduler
+        self.scheduler.start()
+        logger.success("Scheduler started successfully")
+
+    async def _run_scheduled_task(self, question: str):
+        """Execute a scheduled task
+        
+        Args:
+            question (str): The question/prompt to run with the agent
+        """
+        try:
+            logger.info(f"Running scheduled task with question: {question}")
+            response = await self.agent.arun(question)
+            logger.info(f"Task completed successfully, agent response: {response.content}")
         except Exception as e:
-            logger.error(f"Error in input handler: {e}")
+            logger.error(f"Error running scheduled task: {e}")
+
+    def stop_scheduler(self):
+        """Stop the task scheduler"""
+        if self.scheduler.running:
+            self.scheduler.shutdown()
+            logger.info("Task scheduler stopped")

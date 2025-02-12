@@ -10,13 +10,14 @@ from openagent.agent.agent import OpenAgent
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
 
-def handle_signals(loop):
+def handle_signals(agent, loop):
     for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown(loop)))
+        loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown(agent, loop)))
 
 
-async def shutdown(loop):
+async def shutdown(agent, loop):
     click.echo("\nShutting down...")
+    agent.stop_scheduler()
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
     for task in tasks:
         task.cancel()
@@ -43,7 +44,7 @@ def start(file):
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        handle_signals(loop)
+        handle_signals(agent, loop)
 
         loop.create_task(agent.start())
         try:

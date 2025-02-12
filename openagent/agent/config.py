@@ -6,23 +6,14 @@ from pydantic import BaseModel, Field
 
 
 class LLMConfig(BaseModel):
-    model: str = Field(default="gpt-4", description="Name of the language model to use")
-    temperature: float = Field(
-        default=0.7, description="Temperature for model sampling"
-    )
-    api_key: Optional[str] = Field(
-        default=None,
-        description="API key for the language model. If not provided, will try to load from environment variable based on model prefix",
-    )
+    model: str
+    temperature: float = 0.7
+    api_key: Optional[str] = None
 
 
-class IOConfig(BaseModel):
-    inputs: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict, description="Input handler configurations"
-    )
-    outputs: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict, description="Output handler configurations"
-    )
+class TaskConfig(BaseModel):
+    interval: int = Field(description="Interval in seconds between task executions")
+    question: str
 
 
 class AgentConfig(BaseModel):
@@ -41,15 +32,9 @@ class AgentConfig(BaseModel):
     stateful: Optional[bool] = Field(
         default=True, description="Whether to load session state from storage"
     )
-    llm: LLMConfig = Field(
-        default_factory=LLMConfig, description="Language model configuration"
-    )
-    tools: Dict[str, Dict[str, Any]] = Field(
-        default_factory=dict, description="Tool configurations"
-    )
-    io: IOConfig = Field(
-        default_factory=IOConfig, description="IO handler configurations"
-    )
+    llm: LLMConfig
+    tools: Dict[str, Dict[str, Any]] = {}
+    tasks: Dict[str, TaskConfig] = {}
 
     @staticmethod
     def _expand_env_vars(value: Any) -> Any:
@@ -75,14 +60,14 @@ class AgentConfig(BaseModel):
         return value
 
     @classmethod
-    def from_yaml(cls, yaml_path: str) -> "AgentConfig":
-        """Load configuration from a YAML file"""
+    def from_yaml(cls, path: str) -> "AgentConfig":
+        """Load config from yaml file"""
         import yaml
 
-        with open(yaml_path, "r") as f:
+        with open(path) as f:
             config_dict = yaml.safe_load(f)
 
-        # Expand environment variables in the config
-        config_dict = cls._expand_env_vars(config_dict)
+            # Expand environment variables in the config
+            config_dict = cls._expand_env_vars(config_dict)
 
-        return cls(**config_dict)
+            return cls(**config_dict)

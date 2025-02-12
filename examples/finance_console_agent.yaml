@@ -20,16 +20,16 @@ llm:
   temperature: 0.7
   api_key: ${OPENAI_API_KEY}
 
-io:
-  inputs:
-    stdin:
-      prompt: "User > "
+tasks:
+  market_monitor:
+    interval: 5
+    question: "What is the current price of BTC."
+  daily_summary:
+    interval: 120
+    question: "Generate a summary of today's market performance for major tech stocks (AAPL, MSFT, GOOGL, META). Include key price movements and notable events."
 
-  outputs:
-    stdout:
-      prefix: "Financial Advisor > "
-      use_colors: true
 
 tools:
+  stock_price: {}
   token_price:
     coingecko_api_key: ${COINGECKO_API_KEY}
