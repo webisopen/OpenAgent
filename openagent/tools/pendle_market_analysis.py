@@ -8,6 +8,8 @@ import aiohttp
 from pydantic import BaseModel
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
+
+from openagent.agent.config import ModelConfig
 from openagent.core.tool import Tool
 from langchain.chat_models import init_chat_model
 
@@ -47,7 +49,7 @@ class PendleMarketData(Base):
 
 class PendleMarketAnalysisConfig(BaseModel):
     """Configuration for data analysis tool"""
-    core_model: Dict[str, Any]
+    model: ModelConfig
 
 class PendleMarketAnalysisTool(Tool):
     """Tool for analyzing data changes using LLM"""
@@ -74,9 +76,9 @@ class PendleMarketAnalysisTool(Tool):
         """Setup the analysis tool with LLM chain"""
         # Initialize LLM
         llm = init_chat_model(
-            model=config.core_model.model,
-            model_provider=config.core_model.provider,
-            temperature=config.core_model.termperature,
+            model=config.model.name,
+            model_provider=config.model.provider,
+            temperature=config.model.termperature,
         )
         
         # Create prompt template

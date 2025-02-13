@@ -80,7 +80,7 @@ class OpenAgent:
     def _init_model(self):
         """Initialize the language model based on config"""
         logger.info("Initializing language model...")
-        model_name = self.config.core_model.model
+        model_name = self.config.core_model.name
         logger.info(f"Using model: {model_name}")
 
         # Model class mapping
