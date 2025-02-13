@@ -190,11 +190,15 @@ class OpenAgent:
             markdown=self.config.markdown,
             instructions=self.config.instructions,
             debug_mode=self.config.debug_mode,
-            storage=SqliteAgentStorage(
-                table_name="agent_sessions", db_file="storage/agent_sessions.db"
-            )
-            if self.config.stateful
-            else None,
+            telemetry=False,
+            monitoring=False,
+            storage=(
+                SqliteAgentStorage(
+                    table_name="agent_sessions", db_file="storage/agent_sessions.db"
+                )
+                if self.config.stateful
+                else None
+            ),
         )
 
         # Initialize scheduled tasks if any are configured
