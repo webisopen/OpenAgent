@@ -1,0 +1,32 @@
+version: "1.0"
+name: "finance-assistant-agent"
+description: "you are a help assistant, your could call token price tool to get token price and then call twitter post tool to tweet it."
+instructions:
+  - ""
+debug_mode: true
+markdown: true
+stateful: true
+
+llm:
+  provider: "openai"
+  model: "gpt-4o"
+  temperature: 0.7
+  api_key: ${OPENAI_API_KEY}
+
+tasks:
+  market_monitor:
+    scheduler:
+      type: "local"  # This task uses local scheduling
+    interval: 5
+    question: "Find out the current price of BTC, then tweet it."
+
+tools:
+  twitter_post:
+    credentials:
+      bearer_token: ${TWITTER_BEARER_TOKEN}
+      api_key: ${TWITTER_API_KEY}
+      api_secret: ${TWITTER_API_SECRET}
+      access_token: ${TWITTER_ACCESS_TOKEN}
+      access_token_secret: ${TWITTER_ACCESS_TOKEN_SECRET}
+  token_price:
+    coingecko_api_key: ${COINGECKO_API_KEY}
