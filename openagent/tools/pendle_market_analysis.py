@@ -1,6 +1,9 @@
 import json
-from datetime import datetime
-from typing import Any, Dict
+from datetime import datetime, UTC
+from textwrap import dedent
+from typing import Any
+
+from loguru import logger
 from sqlalchemy import Column, Integer, String, DateTime, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -12,47 +15,42 @@ from langchain.chains import LLMChain
 from openagent.core.tool import Tool
 from langchain.chat_models import init_chat_model
 
+from openagent.core.utils.json_equal import json_equal
+
 Base = declarative_base()
 
 POOL_VOTER_APY_CONFIG = {
     "url": "https://api-v2.pendle.finance/bff/v1/ve-pendle/pool-voter-apy",
-    "description": 
-        """
-        Pendle Market APY API provides APY information for Pendle markets across different chains and protocols.
-        Response Structure:
-            top_apy_changes:
-                Array of pools with highest APY increases, containing:
-                - poolId:            Unique identifier for the pool
+    "description": """\
+        Voter APY data for Pendle pools.
+        Data Structure:
+            `top_apy_increases`, `top_apy_decreases` are top 5 increases and decreases in voter APY:
                 - name:              Pool name
-                - symbol:            Pool token symbol
-                - address:          Pool contract address
-                - protocol:         Protocol name
-                - voterApy:         Current voter APY value
-                - lastEpochVoterApy: Previous epoch voter APY
-                - lastEpochChange:   APY change from last epoch (sorted by this field)
-            bottom_apy_changes:
-                Array of pools with highest APY decreases
-                (Same structure as top_apy_changes) 
-            totalPools:   Total number of pools available
-            timestamp:    Date timestamp
-        """
+                - protocol:          Protocol name
+                - voterApy:          Current APY
+                - lastEpochChange:   Voter APY change\
+        """,
 }
+
 
 class PendleMarketData(Base):
     __tablename__ = "pendle_market_data"
 
     id = Column(Integer, primary_key=True)
-    uri = Column(String) # api endpoint
-    data = Column(String) # json response
-    created_at = Column(DateTime, default=datetime.utcnow)
+    uri = Column(String)  # api endpoint
+    data = Column(String)  # json response
+    created_at = Column(DateTime, default=datetime.now(UTC))
+
 
 class PendleMarketAnalysisConfig(BaseModel):
     """Configuration for data analysis tool"""
+
     model: dict[str, Any]
+
 
 class PendleMarketAnalysisTool(Tool):
     """Tool for analyzing data changes using LLM"""
-    
+
     def __init__(self):
         super().__init__()
         self.chain = None
@@ -60,27 +58,27 @@ class PendleMarketAnalysisTool(Tool):
         Base.metadata.create_all(self.engine)
         session = sessionmaker(bind=self.engine)
         self.session = session()
-        
+
     @property
     def name(self) -> str:
         return "pendle_market_analysis"
-        
-    @property 
+
+    @property
     def description(self) -> str:
         return """You are a DeFi data analysis expert.
-        You receive the latest data from Pendle Finance in JSON and provide a structured analysis report.
+        You analyze the latest Pendle Voter APY changes to provide a structured report.
         """
 
     async def setup(self, config: PendleMarketAnalysisConfig) -> None:
         """Setup the analysis tool with LLM chain"""
-                
+
         # Initialize LLM
-        llm = init_chat_model(
+        model = init_chat_model(
             model=config.model["name"],
             model_provider=config.model["provider"],
             temperature=config.model["temperature"],
         )
-        
+
         # Create prompt template
         template = """
         {description}
@@ -92,76 +90,74 @@ class PendleMarketAnalysisTool(Tool):
         - protocol
         - voterApy
         - lastEpochChange
- 
-        Your analysis must include:
-        1. Key changes and patterns
-        2. Notable trends
-        3. Potential implications
-        4. Any anomalies or points of interest
         
-        Your analysis should be structured and concise, do not include any long paragraphs. 
-
-        Analysis:
+        For each pool in data, give 1-2 concise sentences about the pool's APY change.
+        Do not provide any personal opinions or financial advices.
         """
-        
+
         prompt = PromptTemplate(
-            template=template,
-            input_variables=["description", "data"]
+            template=template, input_variables=["description", "data"]
         )
-        
+
         # Create LLM chain
-        self.chain = LLMChain(llm=llm, prompt=prompt)
+        self.chain = LLMChain(llm=model, prompt=prompt)
 
     async def __call__(self) -> str:
         """
         Analyze data using LLM
-            
+
         Returns:
             str: Analysis results from the LLM
         """
         if not self.chain:
             raise RuntimeError("Tool not properly initialized. Call setup() first.")
-            
+
         try:
-            # Query existing data
-            snapshot = self.session.query(PendleMarketData).order_by(PendleMarketData.created_at.desc()).first()
+            # Query existing data from database
+            existing_data = (
+                self.session.query(PendleMarketData)
+                .order_by(PendleMarketData.created_at.desc())
+                .first()
+            )
 
-            # Fetch data
-            result = await self._fetch_pendle_market_apy()
+            # Fetch the latest data from Pendel API
+            latest_data = await self._fetch_pendle_market_apy()
 
-            # Compare with existing data
-            if snapshot:
-                snapshot_data = eval(snapshot.data)
-                result_data = eval(result.data)
+            # Compare both datasets
+            if existing_data:
+                if json_equal(existing_data.data, latest_data.data):
+                    return "APY data has no change."
 
-                if snapshot_data['top_apy_changes'][0]['lastEpochVoterApy'] == result_data['top_apy_changes'][0]['lastEpochVoterApy'] \
-                        and snapshot_data['bottom_apy_changes'][0]['lastEpochVoterApy'] == result_data['bottom_apy_changes'][0]['lastEpochVoterApy']:
-                    return "NO_NEW_DATA"
-            
             # Save new data to database
-            self.session.add(result)
+            self.session.add(latest_data)
             self.session.commit()
-            
+
             # Run analysis chain
             response = await self.chain.arun(
-                description=POOL_VOTER_APY_CONFIG["description"],
-                data=result.data
+                description=dedent(POOL_VOTER_APY_CONFIG["description"]),
+                data=latest_data.data,
             )
 
             return response.strip()
-            
+
         except Exception as e:
-            error_msg = f"Error analyzing data: {str(e)}"
+            error_msg = f"Error analyzing data: {e}"
+            logger.error(error_msg)
             return error_msg
 
     async def _fetch_pendle_market_apy(self) -> PendleMarketData:
         async with aiohttp.ClientSession() as session:
-            async with session.request(method="GET", url=POOL_VOTER_APY_CONFIG["url"]) as response:
+            async with session.request(
+                method="GET", url=POOL_VOTER_APY_CONFIG["url"]
+            ) as response:
                 if response.status != 200:
                     raise Exception(f"API request failed with status {response.status}")
 
                 # Get response data
-                result = await response.text()
+                result = json.loads(await response.text())
+
+                if not result["results"]:
+                    raise Exception("API response is empty")
 
                 data = self._filter_pendle_market_apy(result)
 
@@ -169,36 +165,36 @@ class PendleMarketAnalysisTool(Tool):
                 snapshot = PendleMarketData(
                     uri=POOL_VOTER_APY_CONFIG["url"],
                     data=str(data),
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(UTC),
                 )
 
                 return snapshot
-    
-    def _filter_pendle_market_apy(self, response: str) -> dict:
-        """Filter pool voter apy data"""
-        data = json.loads(response)
 
-        if not data.get('results'):
-            return data
+    @staticmethod
+    def _filter_pendle_market_apy(apy_data: dict) -> dict:
+        """Filter pool voter apy data"""
 
         def extract_pool_info(item: dict) -> dict:
             """Extract relevant pool information"""
-            root_fields = ('poolId', 'voterApy', 'lastEpochVoterApy', 'lastEpochChange')
-            pool_fields = ('name', 'symbol', 'address', 'protocol')
+            root_fields = ("voterApy", "lastEpochChange")
+            pool_fields = ("name", "protocol")
 
             return {
                 **{k: item[k] for k in root_fields},
-                **{k: item['pool'][k] for k in pool_fields}
+                **{k: item["pool"][k] for k in pool_fields},
             }
 
         sorted_results = sorted(
-            data['results'],
-            key=lambda x: x.get('lastEpochChange', 0),
-            reverse=True
+            apy_data["results"], key=lambda x: x.get("lastEpochChange", 0), reverse=True
         )
 
         return {
-            'top_apy_changes': [extract_pool_info(item) for item in sorted_results[:5]],
-            'bottom_apy_changes': [extract_pool_info(item) for item in sorted_results[-5:][::-1]] if len(sorted_results) > 5 else [],
-            'totalPools': data.get('totalPools')
+            "top_apy_increases": [
+                extract_pool_info(item) for item in sorted_results[:5]
+            ],
+            "top_apy_decreases": (
+                [extract_pool_info(item) for item in sorted_results[-5:][::-1]]
+                if len(sorted_results) > 5
+                else []
+            ),
         }

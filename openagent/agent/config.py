@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 class ModelConfig(BaseModel):
     name: str = Field(description="Name of the model")
     temperature: float = Field(default=0.7, description="Temperature of the model")
+    provider: str = Field(default=None, description="Provider of the model")
     api_key: Optional[str] = None
 
 
@@ -58,9 +59,7 @@ class AgentConfig(BaseModel):
     instructions: List[str] = Field(
         default_factory=[], description="List of precise, task-specific instructions"
     )
-    goal: List[str] = Field(
-        default_factory=[], description="List of goals to achieve"
-    )
+    goal: List[str] = Field(default_factory=[], description="List of goals to achieve")
     debug_mode: bool = Field(
         default=False, description="Enable debug mode to view detailed logs"
     )
@@ -69,8 +68,12 @@ class AgentConfig(BaseModel):
         default=True, description="Whether to load session state from storage"
     )
     core_model: ModelConfig
-    tools: Dict[str, Dict[str, Any]] = {}
-    tasks: Dict[str, TaskConfig] = {}
+    tools: Dict[str, Dict[str, Any]] = Field(
+        default_factory={}, description="List of tools"
+    )
+    tasks: Dict[str, TaskConfig] = Field(
+        default_factory={}, description="List of tasks"
+    )
 
     @staticmethod
     def _expand_env_vars(value: Any) -> Any:

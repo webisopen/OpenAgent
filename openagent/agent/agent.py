@@ -32,6 +32,7 @@ def print_banner():
 # Print banner at module level
 print_banner()
 
+
 class OpenAgent:
     @staticmethod
     def from_yaml_file(config_path: str) -> "OpenAgent":
