@@ -74,9 +74,9 @@ class PendleMarketAnalysisTool(Tool):
         """Setup the analysis tool with LLM chain"""
         # Initialize LLM
         llm = init_chat_model(
-            model=config.llm["model"],
-            model_provider=config.llm["provider"],
-            temperature=config.llm["temperature"]
+            model=config.core_model["model"],
+            model_provider=config.core_model["provider"],
+            temperature=config.core_model["temperature"],
         )
         
         # Create prompt template
@@ -96,6 +96,8 @@ class PendleMarketAnalysisTool(Tool):
         2. Notable trends
         3. Potential implications
         4. Any anomalies or points of interest
+        
+        Your analysis should be structured and concise, do not include any long paragraphs. 
 
         Analysis:
         """

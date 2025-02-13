@@ -32,7 +32,6 @@ def print_banner():
 # Print banner at module level
 print_banner()
 
-
 class OpenAgent:
     @staticmethod
     def from_yaml_file(config_path: str) -> "OpenAgent":
@@ -189,6 +188,7 @@ class OpenAgent:
             add_history_to_messages=self.config.stateful,
             markdown=self.config.markdown,
             instructions=self.config.instructions,
+            goal=self.config.goal,
             debug_mode=self.config.debug_mode,
             telemetry=False,
             monitoring=False,

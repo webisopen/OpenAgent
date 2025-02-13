@@ -1,10 +1,14 @@
 version: "1.0"
-name: "finance-assistant-agent"
+name: "financial-assistant-agent"
 # Description specifies the agent's behavior
-description: "you are a help assistant"
+description: "You are a financial assistant."
 # Instructions specify the agent's tasks
 instructions:
-  - "Explain financial concepts in simple terms"
+  - "Provide your interpretation of BTC's current price."
+# Goal specifies the agent's goals
+goal:
+  - "Explain financial concepts in simple terms."
+  - "Do not provide financial advices."
 
 # Should OpenAgent prints debugging logs
 debug_mode: true

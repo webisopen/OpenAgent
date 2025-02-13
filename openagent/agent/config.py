@@ -56,7 +56,10 @@ class AgentConfig(BaseModel):
         description="A description that guides the overall behaviour of the agent",
     )
     instructions: List[str] = Field(
-        default_factory=list, description="List of precise, task-specific instructions"
+        default_factory=[], description="List of precise, task-specific instructions"
+    )
+    goal: List[str] = Field(
+        default_factory=[], description="List of goals to achieve"
     )
     debug_mode: bool = Field(
         default=False, description="Enable debug mode to view detailed logs"
