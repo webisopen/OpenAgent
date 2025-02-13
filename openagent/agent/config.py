@@ -18,13 +18,13 @@ class SchedulerConfig(BaseModel):
 
     @validator("type")
     def validate_scheduler_type(cls, v):
-        if v not in ["local", "celery"]:
+        if v not in ["local", "queue"]:
             raise ValueError("Scheduler type must be either 'local' or 'celery'")
         return v
 
     @validator("broker_url", "result_backend")
     def validate_celery_urls(cls, v, values):
-        if values.get("type") == "celery" and not v:
+        if values.get("type") == "queue" and not v:
             raise ValueError(
                 "broker_url and result_backend are required for Celery scheduler"
             )
@@ -34,7 +34,7 @@ class SchedulerConfig(BaseModel):
 class TaskConfig(BaseModel):
     interval: int = Field(description="Interval in seconds between task executions")
     question: str
-    scheduler: SchedulerConfig = Field(
+    schedule: SchedulerConfig = Field(
         default_factory=lambda: SchedulerConfig(type="local"),
         description="Scheduler configuration for this task",
     )
@@ -42,7 +42,7 @@ class TaskConfig(BaseModel):
     @validator("interval")
     def validate_interval(cls, v):
         if v < 1:
-            raise ValueError("Interval must be at least 1 second")
+            raise ValueError("Interval must be greater than 1 second")
         return v
 
 

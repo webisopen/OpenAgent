@@ -23,9 +23,10 @@ core_model:
 # Define the tasks that the agent should perform
 tasks:
   market_monitoring:
-    scheduler:
-      type: "local"  # This task uses local scheduling
-    interval: 5
+    schedule:
+      type: "local"
+    # The interval (in seconds) specifies how often the task should be performed
+      interval: 5
     query: "What is the current price of BTC."
 
 # Define the tools that the agent can use
