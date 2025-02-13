@@ -218,17 +218,17 @@ class OpenAgent:
                 # Default to local scheduler
                 self.scheduler.add_job(
                     func=self._run_scheduled_task,
-                    trigger=IntervalTrigger(seconds=task_config.schedule.interval),
+                    trigger=IntervalTrigger(seconds=task_config.interval),
                     args=[task_config.query],
                     id=task_id,
                     name=f"Task_{task_id}",
                 )
                 logger.info(
-                    f"Scheduled local task '{task_id}' with interval: {task_config.schedule.interval} seconds"
+                    f"Scheduled local task '{task_id}' with interval: {task_config.interval} seconds"
                 )
 
         # Start the local scheduler if we have any local tasks
-        if any(task.scheduler.type == "local" for task in self.config.tasks.values()):
+        if any(task.schedule.type == "local" for task in self.config.tasks.values()):
             self.scheduler.start()
             logger.success("Local scheduler started successfully")
 
@@ -304,10 +304,10 @@ class OpenAgent:
             **self.celery_app.conf.beat_schedule,
             task_id: {
                 "task": f"openagent.task.{task_id}",
-                "schedule": task_config.schedule.interval,
+                "schedule": task_config.interval,
                 "options": {
                     "queue": "sequential_queue",  # Use a dedicated queue
-                    "expires": task_config.schedule.interval
+                    "expires": task_config.interval
                     - 1,  # Task expires before next schedule
                     "ignore_result": True,  # Don't store task results
                 },
@@ -315,7 +315,7 @@ class OpenAgent:
         }
 
         logger.info(
-            f"Scheduled Celery task '{task_id}' with interval: {task_config.schedule.interval} seconds"
+            f"Scheduled Celery task '{task_id}' with interval: {task_config.interval} seconds"
         )
 
     def _start_celery_threads(self):

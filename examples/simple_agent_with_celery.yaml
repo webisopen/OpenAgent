@@ -26,7 +26,7 @@ tasks:
       type: "queue"
       broker_url: ${CELERY_BROKER_URL}
       result_backend: ${CELERY_RESULT_BACKEND}
-      interval: 5
+    interval: 5
     query: "What is the current price of BTC."
   daily_summary:
     schedule:

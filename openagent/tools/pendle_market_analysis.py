@@ -8,6 +8,7 @@ import aiohttp
 from pydantic import BaseModel
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
+
 from openagent.core.tool import Tool
 from langchain.chat_models import init_chat_model
 
@@ -47,7 +48,7 @@ class PendleMarketData(Base):
 
 class PendleMarketAnalysisConfig(BaseModel):
     """Configuration for data analysis tool"""
-    llm: Dict[str, Any]
+    model: dict[str, Any]
 
 class PendleMarketAnalysisTool(Tool):
     """Tool for analyzing data changes using LLM"""
@@ -72,11 +73,12 @@ class PendleMarketAnalysisTool(Tool):
 
     async def setup(self, config: PendleMarketAnalysisConfig) -> None:
         """Setup the analysis tool with LLM chain"""
+                
         # Initialize LLM
         llm = init_chat_model(
-            model=config.core_model["model"],
-            model_provider=config.core_model["provider"],
-            temperature=config.core_model["temperature"],
+            model=config.model["name"],
+            model_provider=config.model["provider"],
+            temperature=config.model["temperature"],
         )
         
         # Create prompt template
@@ -131,8 +133,9 @@ class PendleMarketAnalysisTool(Tool):
             if snapshot:
                 snapshot_data = eval(snapshot.data)
                 result_data = eval(result.data)
-                
-                if snapshot_data == result_data:
+
+                if snapshot_data['top_apy_changes'][0]['lastEpochVoterApy'] == result_data['top_apy_changes'][0]['lastEpochVoterApy'] \
+                        and snapshot_data['bottom_apy_changes'][0]['lastEpochVoterApy'] == result_data['bottom_apy_changes'][0]['lastEpochVoterApy']:
                     return "NO_NEW_DATA"
             
             # Save new data to database
@@ -196,6 +199,6 @@ class PendleMarketAnalysisTool(Tool):
 
         return {
             'top_apy_changes': [extract_pool_info(item) for item in sorted_results[:5]],
-            'bottom_apy_changes': [extract_pool_info(item) for item in sorted_results[-5:]] if len(sorted_results) > 5 else [],
+            'bottom_apy_changes': [extract_pool_info(item) for item in sorted_results[-5:][::-1]] if len(sorted_results) > 5 else [],
             'totalPools': data.get('totalPools')
         }

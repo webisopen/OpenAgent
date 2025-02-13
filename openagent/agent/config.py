@@ -5,14 +5,14 @@ from typing import Dict, Optional, Any, List
 from pydantic import BaseModel, Field, field_validator
 
 
-class LLMConfig(BaseModel):
-    model: str
-    temperature: float = 0.7
+class ModelConfig(BaseModel):
+    name: str = Field(description="Name of the model")
+    temperature: float = Field(default=0.7, description="Temperature of the model")
     api_key: Optional[str] = None
 
 
 class SchedulerConfig(BaseModel):
-    type: str = Field(description="Type of scheduler to use ('local' or 'celery')")
+    type: str = Field(description="Type of scheduler to use ('local' or 'queue')")
     broker_url: Optional[str] = None
     result_backend: Optional[str] = None
 
@@ -20,7 +20,7 @@ class SchedulerConfig(BaseModel):
     @field_validator("type")
     def validate_scheduler_type(cls, v):
         if v not in ["local", "queue"]:
-            raise ValueError("Scheduler type must be either 'local' or 'celery'")
+            raise ValueError("Scheduler type must be either 'local' or 'queue'")
         return v
 
     @classmethod
@@ -35,7 +35,7 @@ class SchedulerConfig(BaseModel):
 
 class TaskConfig(BaseModel):
     interval: int = Field(description="Interval in seconds between task executions")
-    question: str
+    query: str
     schedule: SchedulerConfig = Field(
         default_factory=lambda: SchedulerConfig(type="local"),
         description="Scheduler configuration for this task",
@@ -68,7 +68,7 @@ class AgentConfig(BaseModel):
     stateful: Optional[bool] = Field(
         default=True, description="Whether to load session state from storage"
     )
-    llm: LLMConfig
+    core_model: ModelConfig
     tools: Dict[str, Dict[str, Any]] = {}
     tasks: Dict[str, TaskConfig] = {}
 

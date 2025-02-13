@@ -30,7 +30,7 @@ tasks:
     schedule:
       type: "local"
     # The interval (in seconds) specifies how often the task should be performed
-      interval: 5
+    interval: 5
     query: "What is the current price of BTC."
 
 # Define the tools that the agent can use
