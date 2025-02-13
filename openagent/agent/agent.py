@@ -228,7 +228,7 @@ class OpenAgent:
                 )
 
         # Start the local scheduler if we have any local tasks
-        if any(task.scheduler.type == "local" for task in self.config.tasks.values()):
+        if any(task.schedule.type == "local" for task in self.config.tasks.values()):
             self.scheduler.start()
             logger.success("Local scheduler started successfully")
 
