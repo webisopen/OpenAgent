@@ -33,7 +33,7 @@ class SchedulerConfig(BaseModel):
 
 class TaskConfig(BaseModel):
     interval: int = Field(description="Interval in seconds between task executions")
-    question: str
+    query: str
     schedule: SchedulerConfig = Field(
         default_factory=lambda: SchedulerConfig(type="local"),
         description="Scheduler configuration for this task",
@@ -65,7 +65,7 @@ class AgentConfig(BaseModel):
     stateful: Optional[bool] = Field(
         default=True, description="Whether to load session state from storage"
     )
-    llm: LLMConfig
+    core_model: LLMConfig
     tools: Dict[str, Dict[str, Any]] = {}
     tasks: Dict[str, TaskConfig] = {}
 

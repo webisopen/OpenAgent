@@ -47,7 +47,7 @@ class PendleMarketData(Base):
 
 class PendleMarketAnalysisConfig(BaseModel):
     """Configuration for data analysis tool"""
-    llm: Dict[str, Any]
+    core_model: Dict[str, Any]
 
 class PendleMarketAnalysisTool(Tool):
     """Tool for analyzing data changes using LLM"""
@@ -74,9 +74,9 @@ class PendleMarketAnalysisTool(Tool):
         """Setup the analysis tool with LLM chain"""
         # Initialize LLM
         llm = init_chat_model(
-            model=config.core_model["name"],
-            model_provider=config.core_model["provider"],
-            temperature=config.core_model["temperature"],
+            model=config.core_model.model,
+            model_provider=config.core_model.provider,
+            temperature=config.core_model.termperature,
         )
         
         # Create prompt template
