@@ -2,13 +2,17 @@ import os
 import asyncio
 from dotenv import load_dotenv
 
-from openagent.tools.twitter_post import TwitterPostTool, TwitterToolConfig, TwitterCredentials
+from openagent.tools.twitter_post import (
+    TwitterPostTool,
+    TwitterToolConfig,
+    TwitterCredentials,
+)
 
 
 async def test_twitter_post():
     """Test function for the Twitter posting tool"""
     load_dotenv()
-    
+
     # Get Twitter credentials from environment variables
     config = TwitterToolConfig(
         credentials=TwitterCredentials(
@@ -16,7 +20,7 @@ async def test_twitter_post():
             api_key=os.getenv("TWITTER_API_KEY"),
             api_secret=os.getenv("TWITTER_API_SECRET"),
             access_token=os.getenv("TWITTER_ACCESS_TOKEN"),
-            access_token_secret=os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
+            access_token_secret=os.getenv("TWITTER_ACCESS_TOKEN_SECRET"),
         )
     )
 
@@ -31,4 +35,4 @@ async def test_twitter_post():
 
 
 if __name__ == "__main__":
-    asyncio.run(test_twitter_post()) 
+    asyncio.run(test_twitter_post())

@@ -57,7 +57,7 @@ class TwitterPostTool(Tool):
                 consumer_key=config.credentials.api_key,
                 consumer_secret=config.credentials.api_secret,
                 access_token=config.credentials.access_token,
-                access_token_secret=config.credentials.access_token_secret
+                access_token_secret=config.credentials.access_token_secret,
             )
             logger.info("Twitter post tool setup completed")
         except Exception as e:

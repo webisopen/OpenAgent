@@ -12,11 +12,9 @@ from apscheduler.triggers.interval import IntervalTrigger
 from loguru import logger
 from pydantic import BaseModel
 from celery import Celery
-from celery.schedules import schedule
 from celery.apps.worker import Worker as CeleryWorker
 from celery.apps.beat import Beat as CeleryBeat
 from celery.beat import PersistentScheduler
-from celery.signals import worker_ready
 
 from openagent.agent.config import AgentConfig
 from openagent.core.tool import Tool
@@ -108,6 +106,7 @@ class OpenAgent:
         if model_class is None:
             logger.warning("No specific model class found, defaulting to OpenAI")
             from agno.models.openai import OpenAIChat
+
             model_class = OpenAIChat
 
         # Initialize and return the model
@@ -168,6 +167,7 @@ class OpenAgent:
 
         logger.success(f"Loaded {len(tools)} tools successfully")
         return tools
+
     async def start(self):
         # Initialize agent with tools
         await self._init_agent()
@@ -176,11 +176,11 @@ class OpenAgent:
     async def _init_agent(self):
         """Initialize the agent with model and tools"""
         logger.info("Initializing agent...")
-        
+
         # Initialize model and tools
         model = self._init_model()
         tools = await self._init_tools()
-        
+
         # Create agent instance with all necessary parameters
         self.agent = Agent(
             model=model,
@@ -206,7 +206,7 @@ class OpenAgent:
     def _init_scheduled_tasks(self):
         """Initialize and start scheduled tasks from config"""
         logger.info("Initializing scheduled tasks...")
-        
+
         for task_id, task_config in self.config.tasks.items():
             if task_config.scheduler.type == "celery":
                 self._init_celery_task(task_id, task_config)
@@ -217,10 +217,12 @@ class OpenAgent:
                     trigger=IntervalTrigger(seconds=task_config.interval),
                     args=[task_config.question],
                     id=task_id,
-                    name=f"Task_{task_id}"
+                    name=f"Task_{task_id}",
                 )
-                logger.info(f"Scheduled local task '{task_id}' with interval: {task_config.interval} seconds")
-        
+                logger.info(
+                    f"Scheduled local task '{task_id}' with interval: {task_config.interval} seconds"
+                )
+
         # Start the local scheduler if we have any local tasks
         if any(task.scheduler.type == "local" for task in self.config.tasks.values()):
             self.scheduler.start()
@@ -228,31 +230,31 @@ class OpenAgent:
 
     def _init_celery_task(self, task_id: str, task_config):
         """Initialize a Celery task
-        
+
         Args:
             task_id (str): The ID of the task
             task_config (TaskConfig): The task configuration
         """
         # Create Celery app if not exists
-        if not hasattr(self, 'celery_app'):
+        if not hasattr(self, "celery_app"):
             self.celery_app = Celery(
-                'openagent',
+                "openagent",
                 broker=task_config.scheduler.broker_url,
-                backend=task_config.scheduler.result_backend
+                backend=task_config.scheduler.result_backend,
             )
-            
+
             # Configure Celery to run tasks sequentially
             self.celery_app.conf.update(
                 task_acks_late=True,  # Tasks are acknowledged after completion
                 worker_prefetch_multiplier=1,  # Only prefetch one task at a time
                 task_track_started=True,  # Track when tasks are started
-                task_serializer='json',
-                accept_content=['json'],
-                result_serializer='json',
-                timezone='UTC',
+                task_serializer="json",
+                accept_content=["json"],
+                result_serializer="json",
+                timezone="UTC",
                 enable_utc=True,
             )
-            
+
             # Start Celery worker and beat in separate threads
             self._start_celery_threads()
 
@@ -263,23 +265,27 @@ class OpenAgent:
             name=f"openagent.task.{task_id}",
             bind=True,  # Bind task instance to first argument
             max_retries=0,  # Allow retries on failure
-            default_retry_delay=0  # Wait 0 seconds between retries
+            default_retry_delay=0,  # Wait 0 seconds between retries
         )
         def celery_task(self_task):
             nonlocal task_running
-            
+
             # If task is already running, skip this execution
             if task_running:
-                logger.warning(f"Task {task_id} is already running, skipping this execution")
+                logger.warning(
+                    f"Task {task_id} is already running, skipping this execution"
+                )
                 return None
-            
+
             task_running = True
             try:
                 # Run the task in the event loop
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 try:
-                    result = loop.run_until_complete(self._run_scheduled_task(task_config.question))
+                    result = loop.run_until_complete(
+                        self._run_scheduled_task(task_config.question)
+                    )
                     return result
                 finally:
                     loop.close()
@@ -293,52 +299,49 @@ class OpenAgent:
         self.celery_app.conf.beat_schedule = {
             **self.celery_app.conf.beat_schedule,
             task_id: {
-                'task': f"openagent.task.{task_id}",
-                'schedule': task_config.interval,
-                'options': {
-                    'queue': 'sequential_queue',  # Use a dedicated queue
-                    'expires': task_config.interval - 1,  # Task expires before next schedule
-                    'ignore_result': True  # Don't store task results
-                }
-            }
+                "task": f"openagent.task.{task_id}",
+                "schedule": task_config.interval,
+                "options": {
+                    "queue": "sequential_queue",  # Use a dedicated queue
+                    "expires": task_config.interval
+                    - 1,  # Task expires before next schedule
+                    "ignore_result": True,  # Don't store task results
+                },
+            },
         }
-        
-        logger.info(f"Scheduled Celery task '{task_id}' with interval: {task_config.interval} seconds")
+
+        logger.info(
+            f"Scheduled Celery task '{task_id}' with interval: {task_config.interval} seconds"
+        )
 
     def _start_celery_threads(self):
         """Start Celery worker and beat in separate threads"""
+
         def start_worker():
             # Configure worker for sequential processing
             worker = CeleryWorker(
                 app=self.celery_app,
-                queues=['sequential_queue'],  # Only process from sequential queue
+                queues=["sequential_queue"],  # Only process from sequential queue
                 concurrency=1,  # Single worker process
-                pool='solo'  # Use solo pool for true sequential processing
+                pool="solo",  # Use solo pool for true sequential processing
             )
             worker.start()
             logger.info("Celery worker started in sequential mode")
 
         def start_beat():
-            beat = CeleryBeat(
-                app=self.celery_app,
-                scheduler_cls=PersistentScheduler
-            )
+            beat = CeleryBeat(app=self.celery_app, scheduler_cls=PersistentScheduler)
             beat.run()
             logger.info("Celery beat started")
 
         # Create and start worker thread
         self.worker_thread = threading.Thread(
-            target=start_worker,
-            name="celery_worker_thread",
-            daemon=True
+            target=start_worker, name="celery_worker_thread", daemon=True
         )
         self.worker_thread.start()
 
         # Create and start beat thread
         self.beat_thread = threading.Thread(
-            target=start_beat,
-            name="celery_beat_thread",
-            daemon=True
+            target=start_beat, name="celery_beat_thread", daemon=True
         )
         self.beat_thread.start()
 
@@ -346,14 +349,16 @@ class OpenAgent:
 
     async def _run_scheduled_task(self, question: str):
         """Execute a scheduled task
-        
+
         Args:
             question (str): The question/prompt to run with the agent
         """
         try:
             logger.info(f"Running scheduled task with question: {question}")
             response = await self.agent.arun(question)
-            logger.info(f"Task completed successfully, agent response: {response.content}")
+            logger.info(
+                f"Task completed successfully, agent response: {response.content}"
+            )
         except Exception as e:
             logger.error(f"Error running scheduled task: {e}")
 
@@ -363,18 +368,18 @@ class OpenAgent:
         if self.scheduler.running:
             self.scheduler.shutdown()
             logger.info("Local task scheduler stopped")
-        
+
         # Stop Celery app if exists
-        if hasattr(self, 'celery_app'):
+        if hasattr(self, "celery_app"):
             # Shutdown Celery worker and beat
             self.celery_app.control.shutdown()
             logger.info("Celery worker and beat shutdown initiated")
-            
+
             # Wait for threads to finish if they exist
-            if hasattr(self, 'worker_thread'):
+            if hasattr(self, "worker_thread"):
                 self.worker_thread.join(timeout=5)
-            if hasattr(self, 'beat_thread'):
+            if hasattr(self, "beat_thread"):
                 self.beat_thread.join(timeout=5)
-                
+
             self.celery_app.control.purge()
             logger.info("Celery tasks purged")
