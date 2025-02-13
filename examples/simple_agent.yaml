@@ -1,6 +1,6 @@
 version: "1.0"
 name: "finance-assistant-agent"
-description: "A knowledgeable financial advisor that provides clear and accurate financial guidance, your name is bob"
+description: "you are a help assistant"
 instructions:
   - "Explain financial concepts in simple terms"
 debug_mode: true
@@ -21,6 +21,7 @@ tasks:
     question: "What is the current price of BTC."
 
 tools:
-  stock_price: {}
+  twitter_post:
+    api_key: ${TWITTER_API_KEY}
   token_price:
     coingecko_api_key: ${COINGECKO_API_KEY}
