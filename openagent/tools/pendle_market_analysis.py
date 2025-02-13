@@ -3,6 +3,7 @@ from datetime import datetime, UTC
 from textwrap import dedent
 from typing import Any
 
+from langchain_core.output_parsers import StrOutputParser
 from loguru import logger
 from sqlalchemy import Column, Integer, String, DateTime, create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -10,7 +11,6 @@ from sqlalchemy.orm import sessionmaker
 import aiohttp
 from pydantic import BaseModel
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
 
 from openagent.core.tool import Tool
 from langchain.chat_models import init_chat_model
@@ -53,7 +53,8 @@ class PendleMarketAnalysisTool(Tool):
 
     def __init__(self):
         super().__init__()
-        self.chain = None
+        self.tool_model = None
+        self.tool_prompt = None
         self.engine = create_engine("sqlite:///storage/pendle_market_analysis.db")
         Base.metadata.create_all(self.engine)
         session = sessionmaker(bind=self.engine)
@@ -73,7 +74,7 @@ class PendleMarketAnalysisTool(Tool):
         """Setup the analysis tool with LLM chain"""
 
         # Initialize LLM
-        model = init_chat_model(
+        self.tool_model = init_chat_model(
             model=config.model["name"],
             model_provider=config.model["provider"],
             temperature=config.model["temperature"],
@@ -95,12 +96,9 @@ class PendleMarketAnalysisTool(Tool):
         Do not provide any personal opinions or financial advices.
         """
 
-        prompt = PromptTemplate(
+        self.tool_prompt = PromptTemplate(
             template=template, input_variables=["description", "data"]
         )
-
-        # Create LLM chain
-        self.chain = LLMChain(llm=model, prompt=prompt)
 
     async def __call__(self) -> str:
         """
@@ -109,7 +107,7 @@ class PendleMarketAnalysisTool(Tool):
         Returns:
             str: Analysis results from the LLM
         """
-        if not self.chain:
+        if not self.tool_model:
             raise RuntimeError("Tool not properly initialized. Call setup() first.")
 
         try:
@@ -132,10 +130,13 @@ class PendleMarketAnalysisTool(Tool):
             self.session.add(latest_data)
             self.session.commit()
 
+            chain = self.tool_prompt | self.tool_model | StrOutputParser()
             # Run analysis chain
-            response = await self.chain.arun(
-                description=dedent(POOL_VOTER_APY_CONFIG["description"]),
-                data=latest_data.data,
+            response = await chain.ainvoke(
+                {
+                    "description": dedent(POOL_VOTER_APY_CONFIG["description"]),
+                    "data": latest_data.data,
+                }
             )
 
             return response.strip()
