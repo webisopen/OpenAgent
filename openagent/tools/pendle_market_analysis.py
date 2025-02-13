@@ -74,7 +74,7 @@ class PendleMarketAnalysisTool(Tool):
         """Setup the analysis tool with LLM chain"""
         # Initialize LLM
         llm = init_chat_model(
-            model=config.core_model["model"],
+            model=config.core_model["name"],
             model_provider=config.core_model["provider"],
             temperature=config.core_model["temperature"],
         )
