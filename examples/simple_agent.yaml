@@ -18,7 +18,7 @@ tasks:
     scheduler:
       type: "local"  # This task uses local scheduling
     interval: 5
-    question: "What is the current price of BTC."
+    query: "What is the current price of BTC."
 
 tools:
   token_price:

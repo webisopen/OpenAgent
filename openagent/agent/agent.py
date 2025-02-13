@@ -215,7 +215,7 @@ class OpenAgent:
                 self.scheduler.add_job(
                     func=self._run_scheduled_task,
                     trigger=IntervalTrigger(seconds=task_config.interval),
-                    args=[task_config.question],
+                    args=[task_config.query],
                     id=task_id,
                     name=f"Task_{task_id}",
                 )
@@ -284,7 +284,7 @@ class OpenAgent:
                 asyncio.set_event_loop(loop)
                 try:
                     result = loop.run_until_complete(
-                        self._run_scheduled_task(task_config.question)
+                        self._run_scheduled_task(task_config.query)
                     )
                     return result
                 finally:

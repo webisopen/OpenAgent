@@ -14,11 +14,11 @@ llm:
   api_key: ${OPENAI_API_KEY}
 
 tasks:
-  market_monitor:
+  market_monitoring:
     scheduler:
       type: "local"  # This task uses local scheduling
     interval: 5
-    question: "Find out the current price of BTC, then tweet it."
+    query: "Find out the current price of BTC, then tweet it."
 
 tools:
   twitter_post:

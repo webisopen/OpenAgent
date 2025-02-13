@@ -21,18 +21,18 @@ llm:
   api_key: ${OPENAI_API_KEY}
 
 tasks:
-  market_monitor:
+  market_monitoring:
     scheduler:
       type: "celery"
       broker_url: ${CELERY_BROKER_URL}
       result_backend: ${CELERY_RESULT_BACKEND}
     interval: 5
-    question: "What is the current price of BTC."
+    query: "What is the current price of BTC."
   daily_summary:
     scheduler:
       type: "local"  # This task uses local scheduling
     interval: 120
-    question: "Generate a summary of today's market performance for major tech stocks (AAPL, MSFT, GOOGL, META). Include key price movements and notable events."
+    query: "Generate a summary of today's market performance for major tech stocks (AAPL, MSFT, GOOGL, META). Include key price movements and notable events."
 
 
 tools:
