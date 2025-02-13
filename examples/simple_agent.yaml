@@ -21,7 +21,5 @@ tasks:
     question: "What is the current price of BTC."
 
 tools:
-  twitter_post:
-    api_key: ${TWITTER_API_KEY}
   token_price:
     coingecko_api_key: ${COINGECKO_API_KEY}
