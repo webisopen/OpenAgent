@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import time
+import threading
 from textwrap import dedent
 
 import pyfiglet
@@ -10,6 +11,12 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from loguru import logger
 from pydantic import BaseModel
+from celery import Celery
+from celery.schedules import schedule
+from celery.apps.worker import Worker as CeleryWorker
+from celery.apps.beat import Beat as CeleryBeat
+from celery.beat import PersistentScheduler
+from celery.signals import worker_ready
 
 from openagent.agent.config import AgentConfig
 from openagent.core.tool import Tool
@@ -201,18 +208,141 @@ class OpenAgent:
         logger.info("Initializing scheduled tasks...")
         
         for task_id, task_config in self.config.tasks.items():
-            self.scheduler.add_job(
-                func=self._run_scheduled_task,
-                trigger=IntervalTrigger(seconds=task_config.interval),
-                args=[task_config.question],
-                id=task_id,
-                name=f"Task_{task_id}"
-            )
-            logger.info(f"Scheduled task '{task_id}' with interval: {task_config.interval} seconds")
+            if task_config.scheduler.type == "celery":
+                self._init_celery_task(task_id, task_config)
+            else:
+                # Default to local scheduler
+                self.scheduler.add_job(
+                    func=self._run_scheduled_task,
+                    trigger=IntervalTrigger(seconds=task_config.interval),
+                    args=[task_config.question],
+                    id=task_id,
+                    name=f"Task_{task_id}"
+                )
+                logger.info(f"Scheduled local task '{task_id}' with interval: {task_config.interval} seconds")
         
-        # Start the scheduler
-        self.scheduler.start()
-        logger.success("Scheduler started successfully")
+        # Start the local scheduler if we have any local tasks
+        if any(task.scheduler.type == "local" for task in self.config.tasks.values()):
+            self.scheduler.start()
+            logger.success("Local scheduler started successfully")
+
+    def _init_celery_task(self, task_id: str, task_config):
+        """Initialize a Celery task
+        
+        Args:
+            task_id (str): The ID of the task
+            task_config (TaskConfig): The task configuration
+        """
+        # Create Celery app if not exists
+        if not hasattr(self, 'celery_app'):
+            self.celery_app = Celery(
+                'openagent',
+                broker=task_config.scheduler.broker_url,
+                backend=task_config.scheduler.result_backend
+            )
+            
+            # Configure Celery to run tasks sequentially
+            self.celery_app.conf.update(
+                task_acks_late=True,  # Tasks are acknowledged after completion
+                worker_prefetch_multiplier=1,  # Only prefetch one task at a time
+                task_track_started=True,  # Track when tasks are started
+                task_serializer='json',
+                accept_content=['json'],
+                result_serializer='json',
+                timezone='UTC',
+                enable_utc=True,
+            )
+            
+            # Start Celery worker and beat in separate threads
+            self._start_celery_threads()
+
+        # Use a simple flag to track task execution status
+        task_running = False
+
+        @self.celery_app.task(
+            name=f"openagent.task.{task_id}",
+            bind=True,  # Bind task instance to first argument
+            max_retries=0,  # Allow retries on failure
+            default_retry_delay=0  # Wait 0 seconds between retries
+        )
+        def celery_task(self_task):
+            nonlocal task_running
+            
+            # If task is already running, skip this execution
+            if task_running:
+                logger.warning(f"Task {task_id} is already running, skipping this execution")
+                return None
+            
+            task_running = True
+            try:
+                # Run the task in the event loop
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    result = loop.run_until_complete(self._run_scheduled_task(task_config.question))
+                    return result
+                finally:
+                    loop.close()
+            except Exception as exc:
+                logger.error(f"Task {task_id} failed: {exc}")
+                self_task.retry(exc=exc)
+            finally:
+                task_running = False
+
+        # Add to Celery beat schedule with additional options
+        self.celery_app.conf.beat_schedule = {
+            **self.celery_app.conf.beat_schedule,
+            task_id: {
+                'task': f"openagent.task.{task_id}",
+                'schedule': task_config.interval,
+                'options': {
+                    'queue': 'sequential_queue',  # Use a dedicated queue
+                    'expires': task_config.interval - 1,  # Task expires before next schedule
+                    'ignore_result': True  # Don't store task results
+                }
+            }
+        }
+        
+        logger.info(f"Scheduled Celery task '{task_id}' with interval: {task_config.interval} seconds")
+
+    def _start_celery_threads(self):
+        """Start Celery worker and beat in separate threads"""
+        def start_worker():
+            # Configure worker for sequential processing
+            worker = CeleryWorker(
+                app=self.celery_app,
+                queues=['sequential_queue'],  # Only process from sequential queue
+                concurrency=1,  # Single worker process
+                pool='solo'  # Use solo pool for true sequential processing
+            )
+            worker.start()
+            logger.info("Celery worker started in sequential mode")
+
+        def start_beat():
+            beat = CeleryBeat(
+                app=self.celery_app,
+                scheduler_cls=PersistentScheduler
+            )
+            beat.run()
+            logger.info("Celery beat started")
+
+        # Create and start worker thread
+        self.worker_thread = threading.Thread(
+            target=start_worker,
+            name="celery_worker_thread",
+            daemon=True
+        )
+        self.worker_thread.start()
+
+        # Create and start beat thread
+        self.beat_thread = threading.Thread(
+            target=start_beat,
+            name="celery_beat_thread",
+            daemon=True
+        )
+        self.beat_thread.start()
+
+        logger.success("Celery worker and beat threads started in sequential mode")
 
     async def _run_scheduled_task(self, question: str):
         """Execute a scheduled task
@@ -228,7 +358,23 @@ class OpenAgent:
             logger.error(f"Error running scheduled task: {e}")
 
     def stop_scheduler(self):
-        """Stop the task scheduler"""
+        """Stop all schedulers"""
+        # Stop local scheduler
         if self.scheduler.running:
             self.scheduler.shutdown()
-            logger.info("Task scheduler stopped")
+            logger.info("Local task scheduler stopped")
+        
+        # Stop Celery app if exists
+        if hasattr(self, 'celery_app'):
+            # Shutdown Celery worker and beat
+            self.celery_app.control.shutdown()
+            logger.info("Celery worker and beat shutdown initiated")
+            
+            # Wait for threads to finish if they exist
+            if hasattr(self, 'worker_thread'):
+                self.worker_thread.join(timeout=5)
+            if hasattr(self, 'beat_thread'):
+                self.beat_thread.join(timeout=5)
+                
+            self.celery_app.control.purge()
+            logger.info("Celery tasks purged")

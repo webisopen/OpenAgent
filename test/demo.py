@@ -1,28 +1,43 @@
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
-import time
+import threading
 
-# 定义一个简单的任务函数
-def my_task():
-    print("任务执行中！当前时间：", time.strftime("%Y-%m-%d %H:%M:%S"))
+from celery import Celery
+from celery.apps.beat import Beat as CeleryBeat
+from celery.apps.worker import Worker as CeleryWorker
+from celery.beat import PersistentScheduler
 
-# 创建 BackgroundScheduler 实例
-scheduler = BackgroundScheduler()
+app = Celery(
+    'tasks',
+    broker='redis://localhost:6379/0',  # 消息代理（Redis）
+    backend='redis://localhost:6379/0' # 结果存储（Redis，可选）
+)
 
-# 使用 CronTrigger 设置每 15 秒执行一次任务
-# 注意：直接指定 second='*/15'，而不是使用 from_crontab
-scheduler.add_job(my_task, CronTrigger(second='*/15'), id="task_every_15s")
+@app.task
+def print_hello():
+    print("Hello, Celery!")
 
-# 启动调度器
-scheduler.start()
+app.conf.beat_schedule = {
+    'print-hello-every-10-seconds': {  # 定时任务名称
+        'task': 'tasks.print_hello',   # 任务路径
+        'schedule': 3.0,              # 每隔 10 秒执行一次
+    },
+}
+app.conf.timezone = 'UTC'  # 设置时区
 
-print("调度器已启动，按 Ctrl+C 停止程序。")
+def start_worker():
+    worker = CeleryWorker(app=app)
+    worker.start()
 
-try:
-    # 模拟主程序运行
-    while True:
-        time.sleep(1)
-except (KeyboardInterrupt, SystemExit):
-    # 关闭调度器
-    scheduler.shutdown()
-    print("调度器已关闭。")
+def start_beat():
+    beat = CeleryBeat(app=app, scheduler_cls=PersistentScheduler)
+    beat.run()
+
+# 启动 Worker 和 Beat 的入口
+if __name__ == '__main__':
+    worker_thread = threading.Thread(target=start_worker)
+    beat_thread = threading.Thread(target=start_beat)
+
+    worker_thread.start()
+    beat_thread.start()
+
+    worker_thread.join()
+    beat_thread.join()
