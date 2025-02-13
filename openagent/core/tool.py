@@ -1,4 +1,6 @@
+import inspect
 from abc import ABC, abstractmethod
+from functools import wraps
 from typing import Any, TypeVar, Union, Awaitable
 
 from agno.tools import Function
@@ -41,4 +43,20 @@ class Tool(ABC):
 
     def to_function(self) -> "Function":
         """Convert to Function object"""
-        return Function.from_callable(self.__call__)
+        original_call = self.__call__
+        original_signature = inspect.signature(original_call)
+        
+        @wraps(original_call)
+        async def wrapper(*args, **kwargs):
+            result = self.__call__(*args, **kwargs)
+            if inspect.isawaitable(result):
+                return await result
+            return result
+            
+        # Preserve the original signature with annotations
+        wrapper.__signature__ = original_signature
+        wrapper.__name__ = self.name
+        wrapper.__doc__ = original_call.__doc__
+        wrapper.__annotations__ = original_call.__annotations__
+        
+        return Function.from_callable(wrapper)
