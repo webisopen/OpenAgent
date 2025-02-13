@@ -135,7 +135,7 @@ class PendleMarketAnalysisTool(Tool):
                 result_data = eval(result.data)
 
                 if snapshot_data['top_apy_changes'][0]['lastEpochVoterApy'] == result_data['top_apy_changes'][0]['lastEpochVoterApy'] \
-                        or snapshot_data['bottom_apy_changes'][0]['lastEpochVoterApy'] == result_data['bottom_apy_changes'][0]['lastEpochVoterApy']:
+                        and snapshot_data['bottom_apy_changes'][0]['lastEpochVoterApy'] == result_data['bottom_apy_changes'][0]['lastEpochVoterApy']:
                     return "NO_NEW_DATA"
             
             # Save new data to database
