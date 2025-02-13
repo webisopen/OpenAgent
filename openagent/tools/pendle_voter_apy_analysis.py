@@ -36,10 +36,8 @@ class PendleVoterApy(Base):
     __tablename__ = "pendle_voter_apy"
 
     id = Column(Integer, primary_key=True)
-    uri = Column(String)  # api endpoint
     data = Column(String)  # json response
     created_at = Column(DateTime, default=datetime.now(UTC))
-
 
 class PendleVoterApyConfig(BaseModel):
     """Configuration for data analysis tool"""
@@ -117,7 +115,7 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
                 .first()
             )
 
-            # Fetch the latest data from Pendel API
+            # Fetch the latest data from Pendle API
             latest_data = await self._fetch_pendle_voter_apy()
 
             # Compare both datasets
@@ -163,7 +161,6 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
 
                 # Create new snapshot
                 snapshot = PendleVoterApy(
-                    uri=POOL_VOTER_APY_CONFIG["url"],
                     data=str(data),
                     created_at=datetime.now(UTC),
                 )
