@@ -81,7 +81,7 @@ class OpenAgent:
     def _init_model(self):
         """Initialize the language model based on config"""
         logger.info("Initializing language model...")
-        model_name = self.config.llm.model
+        model_name = self.config.core_model.name
         logger.info(f"Using model: {model_name}")
 
         # Model class mapping
@@ -112,8 +112,8 @@ class OpenAgent:
         # Initialize and return the model
         model = model_class(
             id=model_name,
-            temperature=self.config.llm.temperature,
-            api_key=self.config.llm.api_key,
+            temperature=self.config.core_model.temperature,
+            api_key=self.config.core_model.api_key,
         )
         logger.success("Model initialized successfully")
         return model

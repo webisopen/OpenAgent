@@ -7,9 +7,9 @@ debug_mode: true
 markdown: true
 stateful: true
 
-llm:
+core_model:
   provider: "openai"
-  model: "gpt-4o"
+  name: "gpt-4o"
   temperature: 0.7
   api_key: ${OPENAI_API_KEY}
 
