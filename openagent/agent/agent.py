@@ -81,7 +81,7 @@ class OpenAgent:
     def _init_model(self):
         """Initialize the language model based on config"""
         logger.info("Initializing language model...")
-        model_name = self.config.llm.model
+        model_name = self.config.core_model.name
         logger.info(f"Using model: {model_name}")
 
         # Model class mapping
@@ -112,8 +112,8 @@ class OpenAgent:
         # Initialize and return the model
         model = model_class(
             id=model_name,
-            temperature=self.config.llm.temperature,
-            api_key=self.config.llm.api_key,
+            temperature=self.config.core_model.temperature,
+            api_key=self.config.core_model.api_key,
         )
         logger.success("Model initialized successfully")
         return model
@@ -190,11 +190,15 @@ class OpenAgent:
             markdown=self.config.markdown,
             instructions=self.config.instructions,
             debug_mode=self.config.debug_mode,
-            storage=SqliteAgentStorage(
-                table_name="agent_sessions", db_file="storage/agent_sessions.db"
-            )
-            if self.config.stateful
-            else None,
+            telemetry=False,
+            monitoring=False,
+            storage=(
+                SqliteAgentStorage(
+                    table_name="agent_sessions", db_file="storage/agent_sessions.db"
+                )
+                if self.config.stateful
+                else None
+            ),
         )
 
         # Initialize scheduled tasks if any are configured
@@ -208,19 +212,19 @@ class OpenAgent:
         logger.info("Initializing scheduled tasks...")
 
         for task_id, task_config in self.config.tasks.items():
-            if task_config.scheduler.type == "celery":
+            if task_config.schedule.type == "queue":
                 self._init_celery_task(task_id, task_config)
             else:
                 # Default to local scheduler
                 self.scheduler.add_job(
                     func=self._run_scheduled_task,
-                    trigger=IntervalTrigger(seconds=task_config.interval),
-                    args=[task_config.question],
+                    trigger=IntervalTrigger(seconds=task_config.schedule.interval),
+                    args=[task_config.query],
                     id=task_id,
                     name=f"Task_{task_id}",
                 )
                 logger.info(
-                    f"Scheduled local task '{task_id}' with interval: {task_config.interval} seconds"
+                    f"Scheduled local task '{task_id}' with interval: {task_config.schedule.interval} seconds"
                 )
 
         # Start the local scheduler if we have any local tasks
@@ -239,8 +243,8 @@ class OpenAgent:
         if not hasattr(self, "celery_app"):
             self.celery_app = Celery(
                 "openagent",
-                broker=task_config.scheduler.broker_url,
-                backend=task_config.scheduler.result_backend,
+                broker=task_config.schedule.broker_url,
+                backend=task_config.schedule.result_backend,
             )
 
             # Configure Celery to run tasks sequentially
@@ -284,7 +288,7 @@ class OpenAgent:
                 asyncio.set_event_loop(loop)
                 try:
                     result = loop.run_until_complete(
-                        self._run_scheduled_task(task_config.question)
+                        self._run_scheduled_task(task_config.query)
                     )
                     return result
                 finally:
@@ -300,10 +304,10 @@ class OpenAgent:
             **self.celery_app.conf.beat_schedule,
             task_id: {
                 "task": f"openagent.task.{task_id}",
-                "schedule": task_config.interval,
+                "schedule": task_config.schedule.interval,
                 "options": {
                     "queue": "sequential_queue",  # Use a dedicated queue
-                    "expires": task_config.interval
+                    "expires": task_config.schedule.interval
                     - 1,  # Task expires before next schedule
                     "ignore_result": True,  # Don't store task results
                 },
@@ -311,7 +315,7 @@ class OpenAgent:
         }
 
         logger.info(
-            f"Scheduled Celery task '{task_id}' with interval: {task_config.interval} seconds"
+            f"Scheduled Celery task '{task_id}' with interval: {task_config.schedule.interval} seconds"
         )
 
     def _start_celery_threads(self):

@@ -7,18 +7,18 @@ debug_mode: true
 markdown: true
 stateful: true
 
-llm:
+core_model:
   provider: "openai"
-  model: "gpt-4o"
+  name: "gpt-4o"
   temperature: 0.7
   api_key: ${OPENAI_API_KEY}
 
 tasks:
-  market_monitor:
-    scheduler:
+  market_monitoring:
+    schedule:
       type: "local"  # This task uses local scheduling
-    interval: 5
-    question: "Find out the current price of BTC, then tweet it."
+      interval: 5
+    query: "Find out the current price of BTC, then tweet it."
 
 tools:
   twitter_post:

@@ -1,25 +1,35 @@
 version: "1.0"
 name: "finance-assistant-agent"
+# Description specifies the agent's behavior
 description: "you are a help assistant"
+# Instructions specify the agent's tasks
 instructions:
   - "Explain financial concepts in simple terms"
+
+# Should OpenAgent prints debugging logs
 debug_mode: true
+# Should the agent use markdown for responses
 markdown: true
+# If the agent is stateful, if uses historical messages to inform its responses
 stateful: true
 
-llm:
+# Define the core model that the agent uses as its brain
+core_model:
   provider: "openai"
-  model: "gpt-4o"
+  name: "gpt-4o"
   temperature: 0.7
   api_key: ${OPENAI_API_KEY}
 
+# Define the tasks that the agent should perform
 tasks:
-  market_monitor:
-    scheduler:
-      type: "local"  # This task uses local scheduling
-    interval: 5
-    question: "What is the current price of BTC."
+  market_monitoring:
+    schedule:
+      type: "local"
+    # The interval (in seconds) specifies how often the task should be performed
+      interval: 5
+    query: "What is the current price of BTC."
 
+# Define the tools that the agent can use
 tools:
   token_price:
     coingecko_api_key: ${COINGECKO_API_KEY}
