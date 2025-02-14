@@ -1,10 +1,6 @@
 version: "1.0"
 name: "finance-assistant-agent"
 description: "you are a help assistant, your could call token price tool to get token price and then call twitter post tool to tweet it."
-instructions:
-    - ""
-goal:
-    - ""
 debug_mode: true
 markdown: true
 stateful: true
