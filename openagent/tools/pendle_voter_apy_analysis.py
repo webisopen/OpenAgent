@@ -39,6 +39,7 @@ class PendleVoterApy(Base):
     data = Column(String)  # json response
     created_at = Column(DateTime, default=datetime.now(UTC))
 
+
 class PendleVoterApyConfig(BaseModel):
     """Configuration for data analysis tool"""
 
@@ -63,12 +64,10 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
 
     @property
     def description(self) -> str:
-        return """You are a DeFi data analysis expert.
-        You analyze the latest Pendle Voter APY changes to provide a structured report.
-        """
+        return "You are a DeFi data analyst that analyze Pendle's voter APY."
 
     async def setup(self, config: PendleVoterApyConfig) -> None:
-        """Setup the analysis tool with LLM chain"""
+        """Setup the analysis tool with model and prompt"""
 
         # Initialize LLM
         self.tool_model = init_chat_model(

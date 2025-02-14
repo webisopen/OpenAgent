@@ -1,7 +1,8 @@
 import json
 from datetime import datetime, UTC
 from dataclasses import dataclass, asdict
-from typing import List
+from heapq import nlargest
+
 import aiohttp
 from pydantic import BaseModel, Field
 from textwrap import dedent
@@ -18,41 +19,27 @@ from openagent.core.tool import Tool
 
 Base = declarative_base()
 
-PENDLE_MARKET_CONFIG = {
-    "url": "https://api-v2.pendle.finance/bff/v3/markets/all?isActive=true",
-    "description": """
-    This data contains Pendle Market information with the following key metrics:
-    
-    For each yield pool:
-    - Symbol: The pool identifier
-    - New pool status: Whether it's a newly added pool
-    - 24h liquidity change: Liquidity change in the last 24 hours
-    - 24h implied APY change: APY change in the last 24 hours
-    
-    The data also includes rankings for:
-    - Top 3 pools by 24h liquidity change
-    - Top 3 new pools by 24h liquidity change
-    - Top 3 pools by APY change
-    - Top 3 new pools by APY change
-    """
-}
 
 @dataclass
-class PendleYieldData:
+class PendleMarketData:
+    """Data of a Pendle market, required for analysis"""
+
     symbol: str
-    isNew: bool
+    protocol: str
+    isNewPool: bool
     liquidityChange24h: float
     impliedApyChange24h: float
 
-    
+
 @dataclass
 class PendleMarketSnapshot:
-    yieldList: List[PendleYieldData]
-    liquidityChangeTopList: List[str]
-    newLiquidityChangeTopList: List[str]
-    apyChangeTopList: List[str]
-    newApyChangeTopList: List[str]
-    
+    markets: list[PendleMarketData]
+    liquidityIncreaseList: list[str]
+    newMarketLiquidityIncreaseList: list[str]
+    apyIncreaseList: list[str]
+    newMarketApyIncreaseList: list[str]
+
+
 class PendleMarket(Base):
     __tablename__ = "pendle_market"
 
@@ -60,10 +47,12 @@ class PendleMarket(Base):
     data = Column(String)  # json response
     created_at = Column(DateTime, default=datetime.now(UTC))
 
+
 class PendleMarketConfig(BaseModel):
     """Configuration for data analysis tool"""
 
     model: ModelConfig = Field(description="Model configuration for LLM")
+
 
 class PendleMarketTool(Tool[PendleMarketConfig]):
     """Tool for analyzing data changes using LLM"""
@@ -83,56 +72,56 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
 
     @property
     def description(self) -> str:
-        return "You are a DeFi data analysis expert focusing on positive market movements"
+        return "You are a DeFi data analyst that analyze Pendle markets' APY and liquidity."
 
     async def setup(self, config: PendleMarketConfig) -> None:
-        """Setup the analysis tool with LLM chain"""
+        """Setup the analysis tool with model and prompt"""
 
-        # Initialize LLM
+        # Initialize the model
         self.tool_model = init_chat_model(
             model=config.model.name,
             model_provider=config.model.provider,
             temperature=config.model.temperature,
         )
 
-        # Create prompt template
-        template = """
-        {description}
-
-        Data: {data}
-        
-        Please analyze the Pendle Market data with the following structure:
-
-        1. Top Performers Analysis:
-           - Analyze the top 3 pools by liquidity change (liquidity_change_top_list)
-           - Analyze the top 3 new pools by liquidity change (new_liquidity_change_top_list)
-           - Analyze the top 3 pools by APY change (apy_change_top_list)
-           - Analyze the top 3 new pools by APY change (new_apy_change_top_list)
-
-        For each pool in these rankings:
-        - Find its detailed data in yieldList
-        - Highlight positive metrics (liquidity increases, APY improvements)
-        - Identify emerging trends and new opportunities
-        - Track successful new pool launches, for new pools: Clearly mark as "NEW" and highlight their initial performance
-
-        Rules:
-        - Keep each pool analysis to 1-2 concise sentences
-        - Only mention positive percentage changes
-        - Skip any negative growth metrics
-        - Do not provide any personal opinions or financial advice
-        - Clearly distinguish between new pools and established pools
-        """
-
         self.tool_prompt = PromptTemplate(
-            template=template, input_variables=["description", "data"]
+            template=dedent(
+                f"""\
+            {self.description}
+    
+            ### Data
+            {{data}}
+            
+            ### Data Structure
+            - Markets: List of market objects with:
+              - `symbol`: Name
+              - `protocol`: Issuing protocol
+              - `isNewPool`: Boolean (new market)
+              - `liquidityChange24h`: 24h liquidity change
+              - `impliedApyChange24h`: 24h APY change
+            
+            - Rankings
+              - `liquidityIncreaseList`: Top 3 by liquidity change
+              - `newMarketLiquidityIncreaseList`: Top 3 new markets by liquidity change
+              - `apyIncreaseList`: Top 3 by APY increase
+              - `newMarketApyIncreaseList`: Top 3 new markets by APY increase
+            
+            ### Task
+            For each market in the rankings, provide an analysis:
+            - Must be concise with 1 sentence per market, must include `symbol`, `protocol`, `liquidityChange24h`, `impliedApyChange24h`
+            - For new markets: add "New Pool"
+            - Do not provide personal opinions or financial advice\
+            """
+            ),
+            input_variables=["data"],
         )
 
     async def __call__(self) -> str:
         """
-        Analyze data using LLM
+        Analyze data using the model
 
         Returns:
-            str: Analysis results from the LLM
+            str: Analysis results from the model
         """
         if not self.tool_model:
             raise RuntimeError("Tool not properly initialized. Call setup() first.")
@@ -150,7 +139,6 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
             # Run analysis chain
             response = await chain.ainvoke(
                 {
-                    "description": dedent(PENDLE_MARKET_CONFIG["description"]),
                     "data": latest_data.data,
                 }
             )
@@ -165,66 +153,92 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
     async def _fetch_pendle_market_data(self) -> PendleMarket:
         async with aiohttp.ClientSession() as session:
             async with session.request(
-                method="GET", url=PENDLE_MARKET_CONFIG["url"]
+                method="GET",
+                url="https://api-v2.pendle.finance/bff/v3/markets/all?isActive=true",
             ) as response:
                 if response.status != 200:
                     raise Exception(f"API request failed with status {response.status}")
 
-                # Get response data
-                results = json.loads(await response.text())
+                # Get Pendle market data from API
+                results = await response.json()
 
                 # Process the data
                 snapshot = self._process_market_data(results)
-                              
+
                 return PendleMarket(
                     data=json.dumps(asdict(snapshot)),
                     created_at=datetime.now(UTC),
                 )
-                
-    def _process_market_data(self, results: dict) -> PendleMarketSnapshot:
-            """Process raw market data into a structured snapshot"""
-            
-            # Create yield data list
-            yield_data_list = []
-            for i in range(len(results['symbolList'])):
-                yield_info = PendleYieldData(
-                    symbol=results['symbolList'][i],
-                    isNew=results['isNewList'][i],
-                    liquidityChange24h=results['liquidityChange24hList'][i],
-                    impliedApyChange24h=results['impliedApyChange24hList'][i],
-                )
-                yield_data_list.append(yield_info)
 
-            # Top 3 by 24h liquidity change
-            liquidity_change_top = sorted(yield_data_list, key=lambda x: x.liquidityChange24h, reverse=True)[:3]
-            liquidity_change_top_symbols = [market.symbol for market in liquidity_change_top]
-                
-            # Top 3 new pools by 24h liquidity change
-            new_pools = [market for market in yield_data_list if market.isNew]
-            new_liquidity_change_top = sorted(new_pools, key=lambda x: x.liquidityChange24h, reverse=True)[:3]
-            new_liquidity_change_top_symbols = [market.symbol for market in new_liquidity_change_top]
+    @staticmethod
+    def _process_market_data(results: dict) -> PendleMarketSnapshot:
+        """Process raw market data into a structured snapshot"""
 
-            # Top 3 by APY change
-            apy_change_top = sorted(yield_data_list, key=lambda x: x.impliedApyChange24h, reverse=True)[:3]
-            apy_change_top_symbols = [market.symbol for market in apy_change_top]
-
-            # Top 3 new pools by APY change
-            new_apy_change_top = sorted(new_pools, key=lambda x: x.impliedApyChange24h, reverse=True)[:3]
-            new_apy_change_top_symbols = [market.symbol for market in new_apy_change_top]
-            
-            # Filter yield data to only include ranked pools
-            relevant_symbols = set(liquidity_change_top_symbols + 
-                                new_liquidity_change_top_symbols + 
-                                apy_change_top_symbols + 
-                                new_apy_change_top_symbols)
-            
-            filtered_yield_data = [data for data in yield_data_list 
-                                if data.symbol in relevant_symbols]
-
-            return PendleMarketSnapshot(
-                yieldList=filtered_yield_data,
-                liquidityChangeTopList=liquidity_change_top_symbols,
-                newLiquidityChangeTopList=new_liquidity_change_top_symbols,
-                apyChangeTopList=apy_change_top_symbols,
-                newApyChangeTopList=new_apy_change_top_symbols
+        # Create market list
+        markets = [
+            PendleMarketData(
+                symbol=symbol,
+                isNewPool=is_new,
+                protocol=protocol,
+                liquidityChange24h=liquidity,
+                impliedApyChange24h=apy,
             )
+            for symbol, is_new, protocol, liquidity, apy in zip(
+                results["symbolList"],
+                results["isNewList"],
+                results["protocolList"],
+                results["liquidityChange24hList"],
+                results["impliedApyChange24hList"],
+            )
+        ]
+
+        # Split the markets into new and existing
+        new_markets = [market for market in markets if market.isNewPool]
+        existing_markets = [market for market in markets if not market.isNewPool]
+
+        # Sort markets by liquidity and APY increases
+        liquidity_increase = nlargest(
+            3, existing_markets, key=lambda x: x.liquidityChange24h
+        )
+        new_market_liquidity_increase = nlargest(
+            3, new_markets, key=lambda x: x.liquidityChange24h
+        )
+        apy_increase = nlargest(
+            3, existing_markets, key=lambda x: x.impliedApyChange24h
+        )
+        new_market_apy_increase = nlargest(
+            3, new_markets, key=lambda x: x.impliedApyChange24h
+        )
+
+        # Extract symbols from sorted markets in one step
+        liquidity_increase_top_symbols = {
+            market.symbol for market in liquidity_increase
+        }
+        new_market_liquidity_increase_symbols = {
+            market.symbol for market in new_market_liquidity_increase
+        }
+        apy_increase_symbols = {market.symbol for market in apy_increase}
+        new_market_apy_increase_symbols = {
+            market.symbol for market in new_market_apy_increase
+        }
+
+        # Combine all relevant symbols
+        relevant_symbols = (
+            liquidity_increase_top_symbols
+            | new_market_liquidity_increase_symbols
+            | apy_increase_symbols
+            | new_market_apy_increase_symbols
+        )
+
+        # Filter markets to include only those in the relevant symbols set
+        filtered_markets = [
+            market for market in markets if market.symbol in relevant_symbols
+        ]
+
+        return PendleMarketSnapshot(
+            markets=filtered_markets,
+            liquidityIncreaseList=list(liquidity_increase_top_symbols),
+            newMarketLiquidityIncreaseList=list(new_market_liquidity_increase_symbols),
+            apyIncreaseList=list(apy_increase_symbols),
+            newMarketApyIncreaseList=list(new_market_apy_increase_symbols),
+        )
