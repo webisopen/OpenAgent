@@ -1,7 +1,7 @@
 import inspect
 from abc import ABC, abstractmethod
 from functools import wraps
-from typing import Any, TypeVar, Union, Awaitable
+from typing import Any, TypeVar, Union, Awaitable, Generic
 
 from agno.tools import Function
 from pydantic import BaseModel
@@ -9,7 +9,7 @@ from pydantic import BaseModel
 ConfigT = TypeVar("ConfigT", bound=BaseModel)
 
 
-class Tool(ABC):
+class Tool(ABC, Generic[ConfigT]):
     """Base class for functions that can be converted to Function objects."""
 
     @property

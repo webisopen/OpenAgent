@@ -34,7 +34,7 @@ async def fetch_price(token: str, coingecko_api_key) -> str:
     return response.text
 
 
-class PriceTool(Tool):
+class PriceTool(Tool[PriceToolConfig]):
     """Tool for fetching token prices from CoinGecko."""
 
     @property

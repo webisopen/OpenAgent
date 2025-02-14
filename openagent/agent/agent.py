@@ -137,16 +137,16 @@ class OpenAgent:
                         # Initialize the tool instance
                         tool_instance = obj()
 
-                        # If tool has a config defined in the module, use it
+                        # Get the tool's generic type parameter for config
                         config_class = None
-                        for config_name, config_obj in inspect.getmembers(module):
-                            if (
-                                inspect.isclass(config_obj)
-                                and issubclass(config_obj, BaseModel)
-                                and config_name.endswith("Config")
-                            ):
-                                config_class = config_obj
-                                break
+                        if hasattr(obj, '__orig_bases__'):
+                            for base in obj.__orig_bases__:
+                                if (hasattr(base, '__origin__') and 
+                                    base.__origin__ is Tool and 
+                                    hasattr(base, '__args__') and 
+                                    len(base.__args__) > 0):
+                                    config_class = base.__args__[0]
+                                    break
 
                         # Setup the tool with config from yaml if available
                         if config_class:

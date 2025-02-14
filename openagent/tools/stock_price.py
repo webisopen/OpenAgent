@@ -12,7 +12,7 @@ class StockPriceConfig(BaseModel):
     )
 
 
-class GetCurrentStockPrice(Tool):
+class GetCurrentStockPrice(Tool[StockPriceConfig]):
     """Function to get current stock price"""
 
     @property

@@ -1,20 +1,20 @@
 import json
 from datetime import datetime, UTC
 from textwrap import dedent
-from typing import Any
+from typing import Optional
 
+import aiohttp
+from langchain.chat_models import init_chat_model
+from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from loguru import logger
+from pydantic import BaseModel, Field
 from sqlalchemy import Column, Integer, String, DateTime, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import aiohttp
-from pydantic import BaseModel
-from langchain.prompts import PromptTemplate
 
+from openagent.agent.config import ModelConfig
 from openagent.core.tool import Tool
-from langchain.chat_models import init_chat_model
-
 from openagent.core.utils.json_equal import json_equal
 
 Base = declarative_base()
@@ -44,11 +44,9 @@ class PendleMarketData(Base):
 
 class PendleMarketAnalysisConfig(BaseModel):
     """Configuration for data analysis tool"""
+    model: ModelConfig = Field(description="Model configuration for LLM")
 
-    model: dict[str, Any]
-
-
-class PendleMarketAnalysisTool(Tool):
+class PendleMarketAnalysisTool(Tool[PendleMarketAnalysisConfig]):
     """Tool for analyzing data changes using LLM"""
 
     def __init__(self):
@@ -75,9 +73,9 @@ class PendleMarketAnalysisTool(Tool):
 
         # Initialize LLM
         self.tool_model = init_chat_model(
-            model=config.model["name"],
-            model_provider=config.model["provider"],
-            temperature=config.model["temperature"],
+            model=config.model.name,
+            model_provider=config.model.provider,
+            temperature=config.model.temperature,
         )
 
         # Create prompt template

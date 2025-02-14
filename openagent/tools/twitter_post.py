@@ -34,7 +34,7 @@ async def post_tweet(text: str, client: tweepy.Client) -> str:
         return f"Error posting tweet: {str(e)}"
 
 
-class TwitterPostTool(Tool):
+class TwitterPostTool(Tool[TwitterToolConfig]):
     """Tool for posting tweets using Twitter API."""
 
     @property
