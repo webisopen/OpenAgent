@@ -15,7 +15,7 @@ from celery.apps.worker import Worker as CeleryWorker
 from celery.apps.beat import Beat as CeleryBeat
 from celery.beat import PersistentScheduler
 
-from openagent.agent.config import AgentConfig
+from openagent.agent.config import AgentConfig, TaskConfig
 from openagent.core.tool import Tool
 
 
@@ -236,7 +236,7 @@ class OpenAgent:
             self.scheduler.start()
             logger.success("Local scheduler started successfully")
 
-    def _init_celery_task(self, task_id: str, task_config):
+    def _init_celery_task(self, task_id: str, task_config: TaskConfig):
         """Initialize a Celery task
 
         Args:
