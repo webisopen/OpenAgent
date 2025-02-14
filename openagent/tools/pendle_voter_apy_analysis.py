@@ -32,8 +32,8 @@ POOL_VOTER_APY_CONFIG = {
 }
 
 
-class PendleMarketData(Base):
-    __tablename__ = "pendle_market_data"
+class PendleVoterApy(Base):
+    __tablename__ = "pendle_voter_apy"
 
     id = Column(Integer, primary_key=True)
     uri = Column(String)  # api endpoint
@@ -41,27 +41,27 @@ class PendleMarketData(Base):
     created_at = Column(DateTime, default=datetime.now(UTC))
 
 
-class PendleMarketAnalysisConfig(BaseModel):
+class PendleVoterApyConfig(BaseModel):
     """Configuration for data analysis tool"""
 
     model: ModelConfig = Field(description="Model configuration for LLM")
 
 
-class PendleMarketAnalysisTool(Tool[PendleMarketAnalysisConfig]):
+class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
     """Tool for analyzing data changes using LLM"""
 
     def __init__(self):
         super().__init__()
         self.tool_model = None
         self.tool_prompt = None
-        self.engine = create_engine("sqlite:///storage/pendle_market_analysis.db")
+        self.engine = create_engine("sqlite:///storage/pendle_data_analysis.db")
         Base.metadata.create_all(self.engine)
         session = sessionmaker(bind=self.engine)
         self.session = session()
 
     @property
     def name(self) -> str:
-        return "pendle_market_analysis"
+        return "pendle_voter_apy_analysis"
 
     @property
     def description(self) -> str:
@@ -69,7 +69,7 @@ class PendleMarketAnalysisTool(Tool[PendleMarketAnalysisConfig]):
         You analyze the latest Pendle Voter APY changes to provide a structured report.
         """
 
-    async def setup(self, config: PendleMarketAnalysisConfig) -> None:
+    async def setup(self, config: PendleVoterApyConfig) -> None:
         """Setup the analysis tool with LLM chain"""
 
         # Initialize LLM
@@ -112,13 +112,13 @@ class PendleMarketAnalysisTool(Tool[PendleMarketAnalysisConfig]):
         try:
             # Query existing data from database
             existing_data = (
-                self.session.query(PendleMarketData)
-                .order_by(PendleMarketData.created_at.desc())
+                self.session.query(PendleVoterApy)
+                .order_by(PendleVoterApy.created_at.desc())
                 .first()
             )
 
             # Fetch the latest data from Pendel API
-            latest_data = await self._fetch_pendle_market_apy()
+            latest_data = await self._fetch_pendle_voter_apy()
 
             # Compare both datasets
             if existing_data:
@@ -145,7 +145,7 @@ class PendleMarketAnalysisTool(Tool[PendleMarketAnalysisConfig]):
             logger.error(error_msg)
             return error_msg
 
-    async def _fetch_pendle_market_apy(self) -> PendleMarketData:
+    async def _fetch_pendle_voter_apy(self) -> PendleVoterApy:
         async with aiohttp.ClientSession() as session:
             async with session.request(
                 method="GET", url=POOL_VOTER_APY_CONFIG["url"]
@@ -159,10 +159,10 @@ class PendleMarketAnalysisTool(Tool[PendleMarketAnalysisConfig]):
                 if not result["results"]:
                     raise Exception("API response is empty")
 
-                data = self._filter_pendle_market_apy(result)
+                data = self._filter_pendle_voter_apy(result)
 
                 # Create new snapshot
-                snapshot = PendleMarketData(
+                snapshot = PendleVoterApy(
                     uri=POOL_VOTER_APY_CONFIG["url"],
                     data=str(data),
                     created_at=datetime.now(UTC),
@@ -171,7 +171,7 @@ class PendleMarketAnalysisTool(Tool[PendleMarketAnalysisConfig]):
                 return snapshot
 
     @staticmethod
-    def _filter_pendle_market_apy(apy_data: dict) -> dict:
+    def _filter_pendle_voter_apy(apy_data: dict) -> dict:
         """Filter pool voter apy data"""
 
         def extract_pool_info(item: dict) -> dict:
