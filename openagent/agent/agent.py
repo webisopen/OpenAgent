@@ -189,7 +189,7 @@ class OpenAgent:
             add_history_to_messages=self.config.stateful,
             markdown=self.config.markdown,
             instructions=self.config.instructions,
-            goal=self.config.goal,
+            goal="\n".join(f"{i+1}. {goal}" for i, goal in enumerate(self.config.goal)) if self.config.goal else None,
             debug_mode=self.config.debug_mode,
             telemetry=False,
             monitoring=False,
