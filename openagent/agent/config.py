@@ -57,9 +57,9 @@ class AgentConfig(BaseModel):
         description="A description that guides the overall behaviour of the agent",
     )
     instructions: List[str] = Field(
-        default_factory=[], description="List of precise, task-specific instructions"
+        default=[], description="List of precise, task-specific instructions"
     )
-    goal: List[str] = Field(default_factory=[], description="List of goals to achieve")
+    goal: List[str] = Field(default=[], description="List of goals to achieve")
     debug_mode: bool = Field(
         default=False, description="Enable debug mode to view detailed logs"
     )
@@ -68,12 +68,8 @@ class AgentConfig(BaseModel):
         default=True, description="Whether to load session state from storage"
     )
     core_model: ModelConfig
-    tools: Dict[str, Dict[str, Any]] = Field(
-        default_factory={}, description="List of tools"
-    )
-    tasks: Dict[str, TaskConfig] = Field(
-        default_factory={}, description="List of tasks"
-    )
+    tools: Dict[str, Dict[str, Any]] = Field(default={}, description="List of tools")
+    tasks: Dict[str, TaskConfig] = Field(default={}, description="List of tasks")
 
     @staticmethod
     def _expand_env_vars(value: Any) -> Any:

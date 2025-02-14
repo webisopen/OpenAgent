@@ -1,7 +1,6 @@
 import json
 from datetime import datetime, UTC
 from textwrap import dedent
-from typing import Optional
 
 import aiohttp
 from langchain.chat_models import init_chat_model
@@ -44,7 +43,9 @@ class PendleMarketData(Base):
 
 class PendleMarketAnalysisConfig(BaseModel):
     """Configuration for data analysis tool"""
+
     model: ModelConfig = Field(description="Model configuration for LLM")
+
 
 class PendleMarketAnalysisTool(Tool[PendleMarketAnalysisConfig]):
     """Tool for analyzing data changes using LLM"""
@@ -81,15 +82,15 @@ class PendleMarketAnalysisTool(Tool[PendleMarketAnalysisConfig]):
         # Create prompt template
         template = """
         {description}
-        
+
         Data: {data}
-              
+
         You must use the following fields in your analysis:
         - name
         - protocol
         - voterApy
         - lastEpochChange
-        
+
         For each pool in data, give 1-2 concise sentences about the pool's APY change.
         Do not provide any personal opinions or financial advices.
         """

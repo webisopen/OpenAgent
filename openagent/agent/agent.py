@@ -10,7 +10,6 @@ from agno.storage.agent.sqlite import SqliteAgentStorage
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from loguru import logger
-from pydantic import BaseModel
 from celery import Celery
 from celery.apps.worker import Worker as CeleryWorker
 from celery.apps.beat import Beat as CeleryBeat
@@ -139,12 +138,14 @@ class OpenAgent:
 
                         # Get the tool's generic type parameter for config
                         config_class = None
-                        if hasattr(obj, '__orig_bases__'):
+                        if hasattr(obj, "__orig_bases__"):
                             for base in obj.__orig_bases__:
-                                if (hasattr(base, '__origin__') and 
-                                    base.__origin__ is Tool and 
-                                    hasattr(base, '__args__') and 
-                                    len(base.__args__) > 0):
+                                if (
+                                    hasattr(base, "__origin__")
+                                    and base.__origin__ is Tool
+                                    and hasattr(base, "__args__")
+                                    and len(base.__args__) > 0
+                                ):
                                     config_class = base.__args__[0]
                                     break
 
@@ -189,7 +190,9 @@ class OpenAgent:
             add_history_to_messages=self.config.stateful,
             markdown=self.config.markdown,
             instructions=self.config.instructions,
-            goal="\n".join(f"{i+1}. {goal}" for i, goal in enumerate(self.config.goal)) if self.config.goal else None,
+            goal="\n".join(f"{i+1}. {goal}" for i, goal in enumerate(self.config.goal))
+            if self.config.goal
+            else None,
             debug_mode=self.config.debug_mode,
             telemetry=False,
             monitoring=False,
