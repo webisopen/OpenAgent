@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, UTC
 from textwrap import dedent
 
@@ -12,6 +13,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from openagent.agent.config import ModelConfig
+from openagent.core.database import sqlite
 from openagent.core.tool import Tool
 from openagent.core.utils.json_equal import json_equal
 
@@ -39,7 +41,8 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
         super().__init__()
         self.tool_model = None
         self.tool_prompt = None
-        self.engine = create_engine("sqlite:///storage/pendle_data_analysis.db")
+        db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
+        self.engine = sqlite.create_engine(db_path)
         Base.metadata.create_all(self.engine)
         session = sessionmaker(bind=self.engine)
         self.session = session()

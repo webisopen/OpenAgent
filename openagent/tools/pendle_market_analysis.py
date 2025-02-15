@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime, UTC
 from dataclasses import dataclass, asdict
 from heapq import nlargest
@@ -15,6 +16,7 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain.chat_models import init_chat_model
 from openagent.agent.config import ModelConfig
+from openagent.core.database import sqlite
 from openagent.core.tool import Tool
 
 Base = declarative_base()
@@ -61,7 +63,9 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         super().__init__()
         self.tool_model = None
         self.tool_prompt = None
-        self.engine = create_engine("sqlite:///storage/pendle_data_analysis.db")
+        # Construct the path to the SQLite database file
+        db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
+        self.engine = sqlite.create_engine(db_path)
         Base.metadata.create_all(self.engine)
         session = sessionmaker(bind=self.engine)
         self.session = session()
