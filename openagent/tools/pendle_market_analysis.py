@@ -55,7 +55,7 @@ class PendleMarketConfig(BaseModel):
 
 
 class PendleMarketTool(Tool[PendleMarketConfig]):
-    """Tool for analyzing data changes using LLM"""
+    """Tool for analyzing data changes using a model"""
 
     def __init__(self):
         super().__init__()
@@ -123,6 +123,7 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         Returns:
             str: Analysis results from the model
         """
+        logger.info(f"{self.name} tool is called.")
         if not self.tool_model:
             raise RuntimeError("Tool not properly initialized. Call setup() first.")
 
@@ -143,6 +144,7 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
                 }
             )
 
+            logger.info(f"{self.name} tool response: {response.strip()}.")
             return response.strip()
 
         except Exception as e:

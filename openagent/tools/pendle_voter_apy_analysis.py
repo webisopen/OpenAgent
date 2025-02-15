@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, UTC
 from textwrap import dedent
 
@@ -18,19 +17,6 @@ from openagent.core.utils.json_equal import json_equal
 
 Base = declarative_base()
 
-POOL_VOTER_APY_CONFIG = {
-    "url": "https://api-v2.pendle.finance/bff/v1/ve-pendle/pool-voter-apy",
-    "description": """\
-        Voter APY data for Pendle pools.
-        Data Structure:
-            `top_apy_increases`, `top_apy_decreases` are top 5 increases and decreases in voter APY:
-                - name:              Pool name
-                - protocol:          Protocol name
-                - voterApy:          Current APY
-                - lastEpochChange:   Voter APY change\
-        """,
-}
-
 
 class PendleVoterApy(Base):
     __tablename__ = "pendle_voter_apy"
@@ -43,11 +29,11 @@ class PendleVoterApy(Base):
 class PendleVoterApyConfig(BaseModel):
     """Configuration for data analysis tool"""
 
-    model: ModelConfig = Field(description="Model configuration for LLM")
+    model: ModelConfig = Field(description="Model configuration")
 
 
 class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
-    """Tool for analyzing data changes using LLM"""
+    """Tool for analyzing data changes using a model"""
 
     def __init__(self):
         super().__init__()
@@ -64,7 +50,9 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
 
     @property
     def description(self) -> str:
-        return "You are a DeFi data analyst that analyze Pendle's voter APY."
+        return """
+        You are a data analyst that analyze Pendle voter APY.
+        """
 
     async def setup(self, config: PendleVoterApyConfig) -> None:
         """Setup the analysis tool with model and prompt"""
@@ -77,32 +65,38 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
         )
 
         # Create prompt template
-        template = """
-        {description}
+        template = dedent(
+            f"""\
+        {self.description}
 
-        Data: {data}
-
-        You must use the following fields in your analysis:
-        - name
-        - protocol
-        - voterApy
-        - lastEpochChange
-
-        For each pool in data, give 1-2 concise sentences about the pool's APY change.
-        Do not provide any personal opinions or financial advices.
+        Data: {{data}}
+        
+        ### Data Structure
+        `top_apy_increases`, `top_apy_decreases` are top 5 increases and decreases in voter APY:
+            - name:              Pool name
+            - protocol:          Protocol that issued the pool on Pendle
+            - voterApy:          Current APY (not finalized for this epoch)
+            - lastEpochChange:   Voter APY change in the last epoch, each epoch is 1 week
+        
+        ### Task
+        Provide an analysis of the data:
+        - Must include `name`, `protocol`, `voterApy`, `lastEpochChange`
+        - Must be concise with 1 sentence per pool
+        - Do not provide personal opinions or financial advice
+        - Example: `name` (`protocol`) current voter APY `voterApy`, increased/decreased from last epoch `lastEpochChange`.\
         """
-
-        self.tool_prompt = PromptTemplate(
-            template=template, input_variables=["description", "data"]
         )
+
+        self.tool_prompt = PromptTemplate(template=template, input_variables=["data"])
 
     async def __call__(self) -> str:
         """
-        Analyze data using LLM
+        Analyze data using the model
 
         Returns:
-            str: Analysis results from the LLM
+            str: Analysis results from the model
         """
+        logger.info(f"{self.name} tool is called.")
         if not self.tool_model:
             raise RuntimeError("Tool not properly initialized. Call setup() first.")
 
@@ -130,11 +124,11 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
             # Run analysis chain
             response = await chain.ainvoke(
                 {
-                    "description": dedent(POOL_VOTER_APY_CONFIG["description"]),
                     "data": latest_data.data,
                 }
             )
 
+            logger.info(f"{self.name} tool response: {response.strip()}.")
             return response.strip()
 
         except Exception as e:
@@ -145,13 +139,14 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
     async def _fetch_pendle_voter_apy(self) -> PendleVoterApy:
         async with aiohttp.ClientSession() as session:
             async with session.request(
-                method="GET", url=POOL_VOTER_APY_CONFIG["url"]
+                method="GET",
+                url="https://api-v2.pendle.finance/bff/v1/ve-pendle/pool-voter-apy",
             ) as response:
                 if response.status != 200:
                     raise Exception(f"API request failed with status {response.status}")
 
                 # Get response data
-                result = json.loads(await response.text())
+                result = await response.json()
 
                 if not result["results"]:
                     raise Exception("API response is empty")
