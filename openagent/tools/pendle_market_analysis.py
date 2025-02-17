@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from textwrap import dedent
 from loguru import logger
 
-from sqlalchemy import Column, Integer, String, DateTime, create_engine
+from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from langchain.prompts import PromptTemplate
@@ -92,10 +92,10 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
             template=dedent(
                 f"""\
             {self.description}
-    
+
             ### Data
             {{data}}
-            
+
             ### Data Structure
             - Markets: List of market objects with:
               - `symbol`: Name
@@ -103,13 +103,13 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
               - `isNewPool`: Boolean (new market)
               - `liquidityChange24h`: 24h liquidity change
               - `impliedApyChange24h`: 24h APY change
-            
+
             - Rankings
               - `liquidityIncreaseList`: Top 3 by liquidity change
               - `newMarketLiquidityIncreaseList`: Top 3 new markets by liquidity change
               - `apyIncreaseList`: Top 3 by APY increase
               - `newMarketApyIncreaseList`: Top 3 new markets by APY increase
-            
+
             ### Task
             For each market in the rankings, provide an analysis:
             - Must be concise with 1 sentence per market, must include `symbol`, `protocol`, `liquidityChange24h`, `impliedApyChange24h`

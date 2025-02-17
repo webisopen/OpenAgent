@@ -1,6 +1,5 @@
 import os
 import asyncio
-from dotenv import load_dotenv
 
 from openagent.tools.twitter_post import (
     TwitterPostTool,
@@ -10,9 +9,6 @@ from openagent.tools.twitter_post import (
 
 
 async def test_twitter_post():
-    """Test function for the Twitter posting tool"""
-    load_dotenv()
-
     # Get Twitter credentials from environment variables
     config = TwitterToolConfig(
         credentials=TwitterCredentials(

@@ -9,7 +9,7 @@ async def test_twitter_feed():
     config = TwitterFeedConfig(
         limit=5,  # Get 5 most recent tweets
         tweet_type="tweet",  # Only get original tweets
-        time_filter="12hour"  # Only get tweets from the last hour
+        time_filter="12hour",  # Only get tweets from the last hour
     )
 
     # Initialize the tool

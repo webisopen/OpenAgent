@@ -8,7 +8,7 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from loguru import logger
 from pydantic import BaseModel, Field
-from sqlalchemy import Column, Integer, String, DateTime, create_engine
+from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -73,14 +73,14 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
         {self.description}
 
         Data: {{data}}
-        
+
         ### Data Structure
         `top_apy_increases`, `top_apy_decreases` are top 5 increases and decreases in voter APY:
             - name:              Pool name
             - protocol:          Protocol that issued the pool on Pendle
             - voterApy:          Current APY (not finalized for this epoch)
             - lastEpochChange:   Voter APY change in the last epoch, each epoch is 1 week
-        
+
         ### Task
         Provide an analysis of the data:
         - Must include `name`, `protocol`, `voterApy`, `lastEpochChange`

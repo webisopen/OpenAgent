@@ -4,9 +4,11 @@ from functools import wraps
 from typing import Any, TypeVar, Union, Awaitable, Generic
 
 from agno.tools import Function
+from dotenv import load_dotenv
 from pydantic import BaseModel
 
 ConfigT = TypeVar("ConfigT", bound=BaseModel)
+load_dotenv()
 
 
 class Tool(ABC, Generic[ConfigT]):
