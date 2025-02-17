@@ -16,7 +16,7 @@ def win_handler(signum, frame):
 
 async def shutdown(agent, loop):
     click.echo("\nShutting down...")
-    agent.stop_scheduler()
+    agent.stop()
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
     for task in tasks:
         task.cancel()
