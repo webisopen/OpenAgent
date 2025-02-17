@@ -70,7 +70,7 @@ class OpenAgent:
 
         # Initialize model and tools
         model = init_model(self.config.core_model)
-        tools = await init_tools(self.config.tools)
+        tools = await init_tools(self.config)
 
         # Create agent instance
         self.agent = Agent(

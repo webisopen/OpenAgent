@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, UTC
 from textwrap import dedent
+from typing import Optional
 
 import aiohttp
 from langchain.chat_models import init_chat_model
@@ -31,14 +32,18 @@ class PendleVoterApy(Base):
 class PendleVoterApyConfig(BaseModel):
     """Configuration for data analysis tool"""
 
-    model: ModelConfig = Field(description="Model configuration")
+    model: Optional[ModelConfig] = Field(
+        default=None,
+        description="Model configuration for LLM. If not provided, will use agent's core model"
+    )
 
 
 class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
     """Tool for analyzing data changes using a model"""
 
-    def __init__(self):
+    def __init__(self, core_model=None):
         super().__init__()
+        self.core_model = core_model
         self.tool_model = None
         self.tool_prompt = None
         db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
@@ -60,11 +65,15 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
     async def setup(self, config: PendleVoterApyConfig) -> None:
         """Setup the analysis tool with model and prompt"""
 
-        # Initialize LLM
+        # Initialize LLM    
+        model_config = config.model if config.model else self.core_model
+        if not model_config:
+            raise RuntimeError("No model configuration provided")
+        
         self.tool_model = init_chat_model(
-            model=config.model.name,
-            model_provider=config.model.provider,
-            temperature=config.model.temperature,
+            model=model_config.name,
+            model_provider=model_config.provider,
+            temperature=model_config.temperature,
         )
 
         # Create prompt template

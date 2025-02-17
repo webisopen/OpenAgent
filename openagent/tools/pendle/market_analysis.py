@@ -3,6 +3,7 @@ import os
 from datetime import datetime, UTC
 from dataclasses import dataclass, asdict
 from heapq import nlargest
+from typing import Optional
 
 import aiohttp
 from pydantic import BaseModel, Field
@@ -53,14 +54,18 @@ class PendleMarket(Base):
 class PendleMarketConfig(BaseModel):
     """Configuration for data analysis tool"""
 
-    model: ModelConfig = Field(description="Model configuration for LLM")
+    model: Optional[ModelConfig] = Field(
+        default=None,
+        description="Model configuration for LLM. If not provided, will use agent's core model"
+    )
 
 
 class PendleMarketTool(Tool[PendleMarketConfig]):
     """Tool for analyzing data changes using a model"""
 
-    def __init__(self):
+    def __init__(self, core_model=None):
         super().__init__()
+        self.core_model = core_model
         self.tool_model = None
         self.tool_prompt = None
         # Construct the path to the SQLite database file
@@ -82,10 +87,14 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         """Setup the analysis tool with model and prompt"""
 
         # Initialize the model
+        model_config = config.model if config.model else self.core_model
+        if not model_config:
+            raise RuntimeError("No model configuration provided")
+        
         self.tool_model = init_chat_model(
-            model=config.model.name,
-            model_provider=config.model.provider,
-            temperature=config.model.temperature,
+            model=model_config.name,
+            model_provider=model_config.provider,
+            temperature=model_config.temperature,
         )
 
         self.tool_prompt = PromptTemplate(

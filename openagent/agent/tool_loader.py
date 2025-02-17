@@ -5,9 +5,10 @@ import importlib
 import pkgutil
 
 from openagent.core.tool import Tool
+from openagent.agent.config import AgentConfig, ModelConfig
 
 
-async def init_tools(tools_config: dict) -> List[Any]:
+async def init_tools(agent_config: AgentConfig) -> List[Any]:
     """Initialize tool functions based on config
 
     Args:
@@ -17,6 +18,8 @@ async def init_tools(tools_config: dict) -> List[Any]:
         List[Any]: List of initialized tool functions
     """
     logger.info("Loading tools...")
+
+    tools_config = agent_config.tools
     tools = []
 
     for tool_path, tool_config in tools_config.items():
@@ -27,7 +30,7 @@ async def init_tools(tools_config: dict) -> List[Any]:
             # First try direct import
             try:
                 module = importlib.import_module(f"openagent.tools.{module_path}")
-                tools.extend(await load_tools_from_module(module, tool_config))
+                tools.extend(await load_tools_from_module(module, tool_config, agent_config.core_model))
                 continue
             except ImportError:
                 pass
@@ -44,7 +47,7 @@ async def init_tools(tools_config: dict) -> List[Any]:
                                 f"openagent.tools.{name}.{parts[0]}"
                             )
                             tools.extend(
-                                await load_tools_from_module(sub_module, tool_config)
+                                await load_tools_from_module(sub_module, tool_config, agent_config.core_model)
                             )
                             break
                         except ImportError:
@@ -74,7 +77,7 @@ async def init_tools(tools_config: dict) -> List[Any]:
     return tools
 
 
-async def load_tools_from_module(module: Any, tool_config: dict) -> List[Any]:
+async def load_tools_from_module(module: Any, tool_config: dict, core_model: ModelConfig) -> List[Any]:
     """Load all tool classes from a module
 
     Args:
@@ -94,7 +97,12 @@ async def load_tools_from_module(module: Any, tool_config: dict) -> List[Any]:
             and not inspect.isabstract(obj)
         ):
             # Initialize the tool instance
-            tool_instance = obj()
+            init_params = inspect.signature(obj.__init__).parameters
+            tool_init_args = {}
+            if 'core_model' in init_params:
+                tool_init_args['core_model'] = core_model
+
+            tool_instance = obj(**tool_init_args)
 
             # Get the tool's generic type parameter for config
             config_class = None
