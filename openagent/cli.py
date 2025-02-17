@@ -1,7 +1,7 @@
 import asyncio
 import os
 import signal
-
+import sys
 import click
 from dotenv import load_dotenv
 
@@ -10,9 +10,8 @@ from openagent.agent.agent import OpenAgent
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
 
-def handle_signals(agent, loop):
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown(agent, loop)))
+def win_handler(signum, frame):
+    sys.exit()
 
 
 async def shutdown(agent, loop):
@@ -39,21 +38,27 @@ def start(file):
         click.echo(f"Error: Config file '{file}' not found")
         return
 
+    agent = OpenAgent.from_yaml_file(file)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    if sys.platform == "win32":
+        signal.signal(signal.SIGINT, win_handler)
+    else:
+        loop.add_signal_handler(
+            signal.SIGINT, lambda: asyncio.create_task(shutdown(agent, loop))
+        )
+        loop.add_signal_handler(
+            signal.SIGTERM, lambda: asyncio.create_task(shutdown(agent, loop))
+        )
+
+    loop.create_task(agent.start())
     try:
-        agent = OpenAgent.from_yaml_file(file)
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        handle_signals(agent, loop)
-
-        loop.create_task(agent.start())
-        try:
-            loop.run_forever()
-        finally:
-            loop.close()
-
-    except Exception as e:
-        click.echo(f"Error: {e}")
+        loop.run_forever()
+    except KeyboardInterrupt:
+        loop.run_until_complete(shutdown(agent, loop))
+    finally:
+        loop.close()
 
 
 if __name__ == "__main__":
