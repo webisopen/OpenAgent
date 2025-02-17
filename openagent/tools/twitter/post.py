@@ -15,24 +15,8 @@ class TwitterCredentials(BaseModel):
 
 
 class TwitterToolConfig(BaseModel):
+    debug: bool = Field(default=False, description="Enable debug mode")
     credentials: TwitterCredentials
-
-
-async def post_tweet(text: str, client: tweepy.Client) -> str:
-    """Post a tweet using tweepy client"""
-    try:
-        response = client.create_tweet(text=text)
-        if response.data:
-            tweet_id = response.data["id"]
-            logger.info(f"Successfully posted tweet with ID: {tweet_id}")
-            return f"Tweet posted successfully. Tweet ID: {tweet_id}"
-        else:
-            logger.error("Failed to post tweet: No response data")
-            return "Failed to post tweet: No response data"
-    except Exception as e:
-        logger.error(f"Error posting tweet: {e}")
-        return f"Error posting tweet: {str(e)}"
-
 
 class TwitterPostTool(Tool[TwitterToolConfig]):
     """Tool for posting tweets using Twitter API."""
@@ -47,11 +31,13 @@ class TwitterPostTool(Tool[TwitterToolConfig]):
 
     def __init__(self):
         super().__init__()
+        self.debug = None
         self.client = None
 
     async def setup(self, config: TwitterToolConfig) -> None:
         """Setup the Twitter tool with API credentials"""
         try:
+            self.debug = config.debug
             self.client = tweepy.Client(
                 bearer_token=config.credentials.bearer_token,
                 consumer_key=config.credentials.api_key,
@@ -71,4 +57,22 @@ class TwitterPostTool(Tool[TwitterToolConfig]):
         if not self.client:
             logger.error("Twitter client not initialized")
             raise ValueError("Twitter client not initialized. Please run setup first.")
-        return await post_tweet(text, self.client)
+        return await self.post_tweet(text, self.client)
+
+    async def post_tweet(self, text: str, client: tweepy.Client) -> str:
+        """Post a tweet using tweepy client"""
+        if self.debug:
+            return f"Debug mode enabled. Skipping tweet post: {text}"
+
+        try:
+            response = client.create_tweet(text=text)
+            if response.data:
+                tweet_id = response.data["id"]
+                logger.info(f"Successfully posted tweet with ID: {tweet_id}")
+                return f"Tweet posted successfully. Tweet ID: {tweet_id}"
+            else:
+                logger.error("Failed to post tweet: No response data")
+                return "Failed to post tweet: No response data"
+        except Exception as e:
+            logger.error(f"Error posting tweet: {e}")
+            return f"Error posting tweet: {str(e)}"

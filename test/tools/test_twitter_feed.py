@@ -1,6 +1,6 @@
 import asyncio
 
-from openagent.tools.twitter_feed import GetTwitterFeed, TwitterFeedConfig
+from openagent.tools.twitter.feed import GetTwitterFeed, TwitterFeedConfig
 
 
 async def test_twitter_feed():

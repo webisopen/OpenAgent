@@ -19,7 +19,8 @@ async def init_tools(tools_config: dict) -> List[Any]:
 
     for tool_name, tool_config in tools_config.items():
         try:
-            module = __import__(f"openagent.tools.{tool_name}", fromlist=["*"])
+            module_path = tool_name.replace('/', '.')
+            module = __import__(f"openagent.tools.{module_path}", fromlist=["*"])
 
             # Import all concrete implementations of Tool
             for name, obj in inspect.getmembers(module):

@@ -1,7 +1,7 @@
 import os
 import asyncio
 
-from openagent.tools.twitter_post import (
+from openagent.tools.twitter.post import (
     TwitterPostTool,
     TwitterToolConfig,
     TwitterCredentials,
