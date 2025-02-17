@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel
 import aiohttp
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import re
 
 from openagent.core.tool import Tool
@@ -9,6 +9,7 @@ from openagent.core.tool import Tool
 
 class Tweet(BaseModel):
     """Model representing a tweet"""
+
     tweet_id: str
     handle: str
     content: str
@@ -18,25 +19,30 @@ class Tweet(BaseModel):
 
 class TwitterFeedConfig(BaseModel):
     """Configuration for the Twitter feed function"""
+
     limit: int = 50  # Default number of tweets to return
-    tweet_type: Optional[str] = None  # Optional filter for tweet type (tweet, reply, retweet, quote)
-    time_filter: Optional[str] = None  # Time filter in format like "10min", "1hour", "24hour"
+    tweet_type: Optional[str] = (
+        None  # Optional filter for tweet type (tweet, reply, retweet, quote)
+    )
+    time_filter: Optional[str] = (
+        None  # Time filter in format like "10min", "1hour", "24hour"
+    )
 
     @property
     def time_threshold(self) -> Optional[datetime]:
         """Convert time filter string to datetime threshold"""
         if not self.time_filter:
             return None
-            
+
         pattern = r"(\d+)(min|hour)"
         match = re.match(pattern, self.time_filter)
         if not match:
             return None
-            
+
         value, unit = match.groups()
         value = int(value)
-        
-        now = datetime.utcnow()
+
+        now = datetime.now(UTC)
         if unit == "min":
             return now - timedelta(minutes=value)
         elif unit == "hour":
@@ -74,17 +80,17 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
             str: A formatted string containing the tweets or error message
         """
         try:
-            params = {
-                'limit': self.config.limit if self.config else 50
-            }
+            params = {"limit": self.config.limit if self.config else 50}
             if self.config and self.config.tweet_type:
-                params['type'] = self.config.tweet_type
+                params["type"] = self.config.tweet_type
 
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.base_url}/{handle}", params=params) as response:
+                async with session.get(
+                    f"{self.base_url}/{handle}", params=params
+                ) as response:
                     if response.status != 200:
                         return f"Error fetching tweets for @{handle}: HTTP {response.status}"
-                    
+
                     tweets = await response.json()
                     if not tweets:
                         return f"No tweets found for @{handle}"
@@ -94,11 +100,13 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
                     if time_threshold:
                         filtered_tweets = []
                         for tweet in tweets:
-                            tweet_time = datetime.fromisoformat(tweet['created_at'].replace('Z', '+00:00'))
+                            tweet_time = datetime.fromisoformat(
+                                tweet["created_at"].replace("Z", "+00:00")
+                            )
                             if tweet_time >= time_threshold:
                                 filtered_tweets.append(tweet)
                         tweets = filtered_tweets
-                        
+
                         if not tweets:
                             return f"No tweets found for @{handle} in the last {self.config.time_filter}"
 
@@ -115,5 +123,3 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
 
         except Exception as e:
             return f"Error fetching tweets for @{handle}: {str(e)}"
-
-
