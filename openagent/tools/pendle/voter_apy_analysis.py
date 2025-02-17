@@ -52,9 +52,6 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
         session = sessionmaker(bind=self.engine)
         self.session = session()
 
-        # 初始化 httpx 客户端
-        self.client = httpx.AsyncClient(timeout=30.0)
-
     @property
     def name(self) -> str:
         return "pendle_voter_apy_analysis"
@@ -152,11 +149,14 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
             return error_msg
 
     async def _fetch_pendle_voter_apy(self) -> PendleVoterApy:
-        try:
-            response = await self.client.get(
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
                 "https://api-v2.pendle.finance/bff/v1/ve-pendle/pool-voter-apy"
             )
-            response.raise_for_status()
+            if response.status_code != 200:
+                raise Exception(
+                    f"API request failed with status {response.status_code}"
+                )
 
             result = response.json()
             if not result["results"]:
@@ -171,10 +171,6 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
             )
 
             return snapshot
-
-        except Exception as e:
-            logger.error(f"Request failed: {e}")
-            raise
 
     @staticmethod
     def _filter_pendle_voter_apy(apy_data: dict) -> dict:
@@ -204,12 +200,3 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
                 else []
             ),
         }
-
-    def __del__(self):
-        """清理资源"""
-        import asyncio
-
-        try:
-            asyncio.create_task(self.client.aclose())
-        except Exception:
-            pass
