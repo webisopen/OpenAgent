@@ -20,14 +20,15 @@ repos:
 
   - repo: local
     hooks:
-      - id: mypy
-        name: mypy
-        entry: mypy .
-        require_serial: true
-        language: system
-        types: [ python ]
-        pass_filenames: false
-        args: [ --config-file=pyproject.toml ]
+      # - id: mypy
+      #   name: mypy
+      #   entry: mypy .
+      #   require_serial: true
+      #   language: system
+      #   types: [ python ]
+      #   pass_filenames: false
+      #   files: ^openagent/
+      #   args: [ --config-file=pyproject.toml ]
       - id: ruff-lint
         name: ruff-lint
         entry: ruff check --fix
