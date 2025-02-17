@@ -19,7 +19,7 @@ tasks:
     query: "Find out the current price of BTC, then tweet it."
 
 tools:
-  twitter_post:
+  twitter/post:
     credentials:
       bearer_token: ${TWITTER_BEARER_TOKEN}
       api_key: ${TWITTER_API_KEY}

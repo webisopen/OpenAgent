@@ -18,6 +18,7 @@ class TwitterToolConfig(BaseModel):
     debug: bool = Field(default=False, description="Enable debug mode")
     credentials: TwitterCredentials
 
+
 class TwitterPostTool(Tool[TwitterToolConfig]):
     """Tool for posting tweets using Twitter API."""
 
