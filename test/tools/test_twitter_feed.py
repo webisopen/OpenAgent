@@ -7,7 +7,8 @@ async def test_twitter_feed():
     """Test function for the Twitter feed tool"""
     # Initialize configuration
     config = TwitterFeedConfig(
-        limit=5,  # Get 5 most recent tweets
+        handles=["aixbt_agent", "OwlonmuskAI"],  # List of Twitter handles to monitor
+        limit=5,  # Get 5 most recent tweets per handle
         tweet_type="tweet",  # Only get original tweets
         time_filter="12hour",  # Only get tweets from the last hour
     )
@@ -16,10 +17,9 @@ async def test_twitter_feed():
     twitter_tool = GetTwitterFeed()
     await twitter_tool.setup(config)
 
-    # Test getting tweets for Vitalik Buterin
-    test_handle = "aixbt_agent"
-    result = await twitter_tool(test_handle)
-    print(f"\nFetching tweets for @{test_handle}:")
+    # Test getting tweets
+    result = await twitter_tool()
+    print("\nFetching tweets from multiple accounts:")
     print(result)
 
 

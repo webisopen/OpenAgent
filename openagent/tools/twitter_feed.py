@@ -20,7 +20,8 @@ class Tweet(BaseModel):
 class TwitterFeedConfig(BaseModel):
     """Configuration for the Twitter feed function"""
 
-    limit: int = 50  # Default number of tweets to return
+    handles: list[str]  # List of Twitter handles to fetch tweets from
+    limit: int = 50  # Default number of tweets to return per handle
     tweet_type: Optional[str] = (
         None  # Optional filter for tweet type (tweet, reply, retweet, quote)
     )
@@ -42,7 +43,7 @@ class TwitterFeedConfig(BaseModel):
         value, unit = match.groups()
         value = int(value)
 
-        now = datetime.now(UTC)
+        now = datetime.now(UTC)  # Already UTC aware
         if unit == "min":
             return now - timedelta(minutes=value)
         elif unit == "hour":
@@ -70,56 +71,67 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
         """Setup the function with configuration"""
         self.config = config
 
-    async def __call__(self, handle: str) -> str:
-        """Get recent tweets from a specified Twitter handle.
-
-        Args:
-            handle (str): The Twitter handle (without @ symbol)
+    async def __call__(self) -> str:
+        """Get recent tweets from the configured Twitter handles.
 
         Returns:
             str: A formatted string containing the tweets or error message
         """
-        try:
-            params = {"limit": self.config.limit if self.config else 50}
-            if self.config and self.config.tweet_type:
-                params["type"] = self.config.tweet_type
+        all_tweets = []
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    f"{self.base_url}/{handle}", params=params
-                ) as response:
-                    if response.status != 200:
-                        return f"Error fetching tweets for @{handle}: HTTP {response.status}"
+        for handle in self.config.handles:
+            try:
+                params = {"limit": self.config.limit if self.config else 50}
+                if self.config and self.config.tweet_type:
+                    params["type"] = self.config.tweet_type
 
-                    tweets = await response.json()
-                    if not tweets:
-                        return f"No tweets found for @{handle}"
-
-                    # Apply time filter if configured
-                    time_threshold = self.config.time_threshold if self.config else None
-                    if time_threshold:
-                        filtered_tweets = []
-                        for tweet in tweets:
-                            tweet_time = datetime.fromisoformat(
-                                tweet["created_at"].replace("Z", "+00:00")
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(
+                        f"{self.base_url}/{handle}", params=params
+                    ) as response:
+                        if response.status != 200:
+                            all_tweets.append(
+                                f"Error fetching tweets for @{handle}: HTTP {response.status}"
                             )
-                            if tweet_time >= time_threshold:
-                                filtered_tweets.append(tweet)
-                        tweets = filtered_tweets
+                            continue
 
+                        tweets = await response.json()
                         if not tweets:
-                            return f"No tweets found for @{handle} in the last {self.config.time_filter}"
+                            all_tweets.append(f"No tweets found for @{handle}")
+                            continue
 
-                    # Format the tweets into a readable string
-                    formatted_tweets = []
-                    for tweet in tweets:
-                        tweet_obj = Tweet(**tweet)
-                        created_at = tweet_obj.created_at.strftime("%Y-%m-%d %H:%M:%S")
-                        formatted_tweets.append(
-                            f"[{created_at}] {tweet_obj.type.upper()}: {tweet_obj.content}"
+                        # Apply time filter if configured
+                        time_threshold = (
+                            self.config.time_threshold if self.config else None
                         )
+                        if time_threshold:
+                            filtered_tweets = []
+                            for tweet in tweets:
+                                # Ensure the tweet time is timezone aware in UTC
+                                tweet_time = datetime.fromisoformat(
+                                    tweet["created_at"]
+                                ).replace(tzinfo=UTC)
+                                if tweet_time >= time_threshold:
+                                    filtered_tweets.append(tweet)
+                            tweets = filtered_tweets
 
-                    return "\n\n".join(formatted_tweets)
+                            if not tweets:
+                                all_tweets.append(
+                                    f"No tweets found for @{handle} in the last {self.config.time_filter}"
+                                )
+                                continue
 
-        except Exception as e:
-            return f"Error fetching tweets for @{handle}: {str(e)}"
+                        # Format the tweets into a readable string
+                        for tweet in tweets:
+                            tweet_obj = Tweet(**tweet)
+                            created_at = tweet_obj.created_at.strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            )
+                            all_tweets.append(
+                                f"@{handle} [{created_at}] {tweet_obj.type.upper()}: {tweet_obj.content}"
+                            )
+
+            except Exception as e:
+                all_tweets.append(f"Error fetching tweets for @{handle}: {str(e)}")
+
+        return "\n\n".join(all_tweets)
