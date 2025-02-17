@@ -3,7 +3,7 @@ from datetime import datetime, UTC
 from textwrap import dedent
 from typing import Optional
 
-import aiohttp
+import httpx
 from langchain.chat_models import init_chat_model
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -34,7 +34,7 @@ class PendleVoterApyConfig(BaseModel):
 
     model: Optional[ModelConfig] = Field(
         default=None,
-        description="Model configuration for LLM. If not provided, will use agent's core model"
+        description="Model configuration for LLM. If not provided, will use agent's core model",
     )
 
 
@@ -52,6 +52,9 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
         session = sessionmaker(bind=self.engine)
         self.session = session()
 
+        # 初始化 httpx 客户端
+        self.client = httpx.AsyncClient(timeout=30.0)
+
     @property
     def name(self) -> str:
         return "pendle_voter_apy_analysis"
@@ -65,11 +68,11 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
     async def setup(self, config: PendleVoterApyConfig) -> None:
         """Setup the analysis tool with model and prompt"""
 
-        # Initialize LLM    
+        # Initialize LLM
         model_config = config.model if config.model else self.core_model
         if not model_config:
             raise RuntimeError("No model configuration provided")
-        
+
         self.tool_model = init_chat_model(
             model=model_config.name,
             model_provider=model_config.provider,
@@ -149,29 +152,29 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
             return error_msg
 
     async def _fetch_pendle_voter_apy(self) -> PendleVoterApy:
-        async with aiohttp.ClientSession() as session:
-            async with session.request(
-                method="GET",
-                url="https://api-v2.pendle.finance/bff/v1/ve-pendle/pool-voter-apy",
-            ) as response:
-                if response.status != 200:
-                    raise Exception(f"API request failed with status {response.status}")
+        try:
+            response = await self.client.get(
+                "https://api-v2.pendle.finance/bff/v1/ve-pendle/pool-voter-apy"
+            )
+            response.raise_for_status()
 
-                # Get response data
-                result = await response.json()
+            result = response.json()
+            if not result["results"]:
+                raise Exception("API response is empty")
 
-                if not result["results"]:
-                    raise Exception("API response is empty")
+            data = self._filter_pendle_voter_apy(result)
 
-                data = self._filter_pendle_voter_apy(result)
+            # Create new snapshot
+            snapshot = PendleVoterApy(
+                data=str(data),
+                created_at=datetime.now(UTC),
+            )
 
-                # Create new snapshot
-                snapshot = PendleVoterApy(
-                    data=str(data),
-                    created_at=datetime.now(UTC),
-                )
+            return snapshot
 
-                return snapshot
+        except Exception as e:
+            logger.error(f"Request failed: {e}")
+            raise
 
     @staticmethod
     def _filter_pendle_voter_apy(apy_data: dict) -> dict:
@@ -201,3 +204,12 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
                 else []
             ),
         }
+
+    def __del__(self):
+        """清理资源"""
+        import asyncio
+
+        try:
+            asyncio.create_task(self.client.aclose())
+        except Exception:
+            pass
