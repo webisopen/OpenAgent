@@ -4,7 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Type
 
 import aiohttp
-from cachetools import TTLCache, cached
+from aiocache import Cache
+from aiocache.decorators import cached
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
@@ -20,8 +21,6 @@ HEADERS = {
     "language": "en",
     "Content-Type": "application/json",
 }
-
-cache = TTLCache(maxsize=100, ttl=24 * 60 * 60)
 
 
 class ARGS(BaseModel):
@@ -70,7 +69,7 @@ async def fetch_project_detail(session, project_id: int) -> dict:
         return json.loads(response_text)["data"]
 
 
-@cached(cache)
+@cached(ttl=300, cache=Cache.MEMORY)
 async def fetch_project(keyword: str) -> list:
     url = "https://api.rootdata.com/open/ser_inv"
     payload = json.dumps({"query": keyword, "variables": {}})
