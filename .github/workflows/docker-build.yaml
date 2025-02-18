@@ -6,6 +6,10 @@ on:
       - main
       - refactor/major-architecture-upgrade
 
+env:
+  GAR_REGISTRY: us-central1-docker.pkg.dev/openagent-422907/docker
+  GAR_IMAGE: ${{ env.GAR_REGISTRY }}/openagent
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -51,7 +55,7 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository }}
-            us-central1-docker.pkg.dev/openagent-422907/docker/openagent
+            ${{ env.GAR_IMAGE }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
@@ -71,3 +75,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=registry,ref=${{ env.GAR_IMAGE }}:buildx-cache
+          cache-to: |
+            type=registry,ref=${{ env.GAR_IMAGE }}:buildx-cache,mode=max
