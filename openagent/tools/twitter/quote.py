@@ -66,6 +66,11 @@ class TwitterQuote(Tool[TwitterQuoteConfig]):
             logger.error("Twitter client not initialized")
             raise ValueError("Twitter client not initialized. Please run setup first.")
 
+        # check if comment is not_relevant
+        if comment.lower().strip() == "not_relevant":
+            logger.info(f"Skipping quote for tweet {tweet_id}: marked as not relevant")
+            return "Skipped: Tweet marked as not relevant"
+
         logger.info(f"{self.name} tool is called for tweet: {tweet_id}")
 
         if self.debug:
