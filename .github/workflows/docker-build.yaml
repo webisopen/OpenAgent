@@ -7,8 +7,7 @@ on:
       - refactor/major-architecture-upgrade
 
 env:
-  GAR_REGISTRY: us-central1-docker.pkg.dev/openagent-422907/docker
-  GAR_IMAGE: ${{ env.GAR_REGISTRY }}/openagent
+  GAR_IMAGE: us-central1-docker.pkg.dev/openagent-422907/docker/openagent
 
 jobs:
   build:
