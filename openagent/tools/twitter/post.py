@@ -61,6 +61,7 @@ class TwitterPostTool(Tool[TwitterToolConfig]):
         return await self.post_tweet(text, self.client)
 
     async def post_tweet(self, text: str, client: tweepy.Client) -> str:
+        logger.info(f"{self.name} tool is called with text: {text}")
         """Post a tweet using tweepy client"""
         if self.debug:
             return f"Debug mode enabled. Skipping tweet post: {text}"

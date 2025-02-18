@@ -7,10 +7,10 @@ async def test_twitter_feed():
     """Test function for the Twitter feed tool"""
     # Initialize configuration
     config = TwitterFeedConfig(
-        handles=["aixbt_agent", "OwlonmuskAI"],  # List of Twitter handles to monitor
-        limit=5,  # Get 5 most recent tweets per handle
+        handles=["pendleintern"],  # List of Twitter handles to monitor
+        limit=1,  # Get 5 most recent tweets per handle
         tweet_type="tweet",  # Only get original tweets
-        time_filter="12hour",  # Only get tweets from the last hour
+        time_filter="24hour",  # Only get tweets from the last hour
     )
 
     # Initialize the tool

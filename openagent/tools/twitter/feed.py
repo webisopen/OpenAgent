@@ -1,4 +1,6 @@
 from typing import Optional
+
+from loguru import logger
 from pydantic import BaseModel
 import aiohttp
 from datetime import datetime, timedelta, UTC
@@ -77,6 +79,7 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
         Returns:
             str: A formatted string containing the tweets or error message
         """
+        logger.info(f"{self.name} tool is called with config: {self.config}")
         all_tweets = []
 
         for handle in self.config.handles:
