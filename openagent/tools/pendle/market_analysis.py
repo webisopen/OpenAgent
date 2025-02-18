@@ -5,7 +5,7 @@ from dataclasses import dataclass, asdict
 from heapq import nlargest
 from typing import Optional
 
-import aiohttp
+import httpx
 from pydantic import BaseModel, Field
 from textwrap import dedent
 from loguru import logger
@@ -56,7 +56,7 @@ class PendleMarketConfig(BaseModel):
 
     model: Optional[ModelConfig] = Field(
         default=None,
-        description="Model configuration for LLM. If not provided, will use agent's core model"
+        description="Model configuration for LLM. If not provided, will use agent's core model",
     )
 
 
@@ -90,7 +90,7 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         model_config = config.model if config.model else self.core_model
         if not model_config:
             raise RuntimeError("No model configuration provided")
-        
+
         self.tool_model = init_chat_model(
             model=model_config.name,
             model_provider=model_config.provider,
@@ -166,24 +166,25 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
             return error_msg
 
     async def _fetch_pendle_market_data(self) -> PendleMarket:
-        async with aiohttp.ClientSession() as session:
-            async with session.request(
-                method="GET",
-                url="https://api-v2.pendle.finance/bff/v3/markets/all?isActive=true",
-            ) as response:
-                if response.status != 200:
-                    raise Exception(f"API request failed with status {response.status}")
-
-                # Get Pendle market data from API
-                results = await response.json()
-
-                # Process the data
-                snapshot = self._process_market_data(results)
-
-                return PendleMarket(
-                    data=json.dumps(asdict(snapshot)),
-                    created_at=datetime.now(UTC),
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api-v2.pendle.finance/bff/v3/markets/all?isActive=true"
+            )
+            if response.status_code != 200:
+                raise Exception(
+                    f"API request failed with status {response.status_code}"
                 )
+
+            # Get Pendle market data from API
+            results = response.json()
+
+            # Process the data
+            snapshot = self._process_market_data(results)
+
+            return PendleMarket(
+                data=json.dumps(asdict(snapshot)),
+                created_at=datetime.now(UTC),
+            )
 
     @staticmethod
     def _process_market_data(results: dict) -> PendleMarketSnapshot:
