@@ -84,7 +84,7 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
         Data: {{data}}
 
         ### Data Structure
-        `top_apy_increases`, `top_apy_decreases` are top 5 increases and decreases in voter APY:
+        `top_apy_increases`, `top_apy_decreases` are top 3 increases and decreases in voter APY:
             - name:              Pool name
             - protocol:          Protocol that issued the pool on Pendle
             - voterApy:          Current APY (not finalized for this epoch)
@@ -177,13 +177,30 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
         """Filter pool voter apy data"""
 
         def extract_pool_info(item: dict) -> dict:
-            """Extract relevant pool information"""
-            root_fields = ("voterApy", "lastEpochChange")
-            pool_fields = ("name", "protocol")
+            """Extract relevant pool information and convert APY to percentage format"""
+            voter_apy = item["voterApy"]
+            last_epoch_change = item["lastEpochChange"]
+
+            # Determine change direction based on lastEpochChange
+            # If change is positive -> increased, negative -> decreased
+            change_direction = (
+                "increased"
+                if last_epoch_change > 0
+                else "decreased"
+                if last_epoch_change < 0
+                else "unchanged"
+            )
+
+            # Convert to percentage strings, use absolute value for lastEpochChange
+            voter_apy_pct = f"{voter_apy * 100:.2f}%"
+            last_epoch_pct = f"{abs(last_epoch_change * 100):.2f}%"
 
             return {
-                **{k: item[k] for k in root_fields},
-                **{k: item["pool"][k] for k in pool_fields},
+                "voterApy": voter_apy_pct,
+                "lastEpochChange": last_epoch_pct,
+                "name": item["pool"]["name"],
+                "protocol": item["pool"]["protocol"],
+                "change_direction": change_direction,
             }
 
         sorted_results = sorted(
@@ -192,11 +209,11 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
 
         return {
             "top_apy_increases": [
-                extract_pool_info(item) for item in sorted_results[:5]
+                extract_pool_info(item) for item in sorted_results[:3]
             ],
             "top_apy_decreases": (
-                [extract_pool_info(item) for item in sorted_results[-5:][::-1]]
-                if len(sorted_results) > 5
+                [extract_pool_info(item) for item in sorted_results[-3:][::-1]]
+                if len(sorted_results) > 3
                 else []
             ),
         }
