@@ -123,3 +123,22 @@ class OpenAgent:
     def stop(self):
         """Stop the agent and all its components"""
         self.scheduler_manager.stop()
+
+    async def chat(self, message: str) -> str:
+        """Chat with the agent
+
+        Args:
+            message (str): The message to send to the agent
+
+        Returns:
+            dict: The response from the agent containing content and metadata
+        """
+        try:
+            if not self.agent:
+                raise RuntimeError("Agent not initialized. Please call start() first.")
+
+            response = await self.agent.arun(message)
+            return response.content
+        except Exception as e:
+            logger.error(f"Error in chat: {e}")
+            raise
