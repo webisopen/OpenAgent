@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import Optional, List
 
 from loguru import logger
 from pydantic import BaseModel
 import httpx
 from datetime import datetime, timedelta, UTC
 import re
+import asyncio
 
 from openagent.core.tool import Tool
 
@@ -56,91 +57,107 @@ class TwitterFeedConfig(BaseModel):
 class GetTwitterFeed(Tool[TwitterFeedConfig]):
     """Function to get tweets from a Twitter handle using RSS3 API"""
 
+    def __init__(self):
+        super().__init__()
+        self.config: TwitterFeedConfig | None = None
+        self.base_url = "https://ai.rss3.io/api/v1/tweets"
+        self.max_retries = 5
+        self.retry_delay = 1
+
     @property
     def name(self) -> str:
         return "get_twitter_feed"
 
     @property
     def description(self) -> str:
-        return "Get recent tweets from a specified Twitter handle with optional time filtering"
-
-    def __init__(self):
-        super().__init__()
-        self.config: TwitterFeedConfig | None = None
-        self.base_url = "https://ai.rss3.io/api/v1/tweets"
+        return "Get recent tweets from specified Twitter handles with optional time filtering"
 
     async def setup(self, config: TwitterFeedConfig) -> None:
         """Setup the function with configuration"""
         self.config = config
 
-    async def __call__(self) -> str:
-        """Get recent tweets from the configured Twitter handles.
+    async def _fetch_single_handle(self, client: httpx.AsyncClient, handle: str) -> List[dict]:
+        """Fetch tweets for a single handle with retry logic"""
+        params = {"limit": self.config.limit if self.config else 50}
+        if self.config and self.config.tweet_type:
+            params["type"] = self.config.tweet_type
 
-        Returns:
-            str: A formatted string containing the tweets or error message
-        """
+        for retry_count in range(self.max_retries):
+            try:
+                logger.info(f"Fetching tweets for @{handle}")
+                response = await client.get(f"{self.base_url}/{handle}", params=params)
+                
+                if response.status_code != 200:
+                    if retry_count < self.max_retries - 1:
+                        logger.error(f"HTTP {response.status_code}, retrying {retry_count + 2}/{self.max_retries}")
+                        await asyncio.sleep(self.retry_delay)
+                        continue
+                    logger.error(f"Failed after {self.max_retries} attempts: HTTP {response.status_code}")
+                    return []
+
+                tweets = response.json() or []
+                if not tweets:
+                    logger.info(f"No tweets found for @{handle}")
+                return tweets
+
+            except Exception as e:
+                if retry_count < self.max_retries - 1:
+                    logger.error(f"Error (attempt {retry_count + 1}/{self.max_retries}): {str(e)}")
+                    await asyncio.sleep(self.retry_delay)
+                else:
+                    logger.error(f"Failed after {self.max_retries} attempts: {str(e)}")
+                    return []
+        
+        return []
+
+    def _apply_time_filter(self, tweets: List[dict]) -> List[dict]:
+        """Filter tweets based on time threshold"""
+        if not self.config or not self.config.time_threshold:
+            return tweets
+
+        filtered = []
+        for tweet in tweets:
+            tweet_time = datetime.fromisoformat(tweet["created_at"]).replace(tzinfo=UTC)
+            if tweet_time >= self.config.time_threshold:
+                filtered.append(tweet)
+
+        if not filtered:
+            logger.info("No tweets found after applying time filter")
+        
+        return filtered
+
+    def _format_output(self, tweets: List[Tweet]) -> str:
+        """Format tweets into readable output"""
+        if not tweets:
+            return "No tweets found matching the criteria."
+
+        tweets.sort(key=lambda x: x.created_at, reverse=True)
+        formatted = []
+        
+        for tweet in tweets:
+            created_at = tweet.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            formatted.append(
+                f"TWEET_ID={tweet.tweet_id}||"
+                f"@{tweet.handle} [{created_at}] {tweet.type.upper()}: {tweet.content}"
+            )
+
+        return "\n\n".join(formatted)
+
+    async def __call__(self) -> str:
+        """Main function to get tweets from all configured handles"""
         logger.info(f"{self.name} tool is called with config: {self.config}")
         all_tweets = []
 
         async with httpx.AsyncClient() as client:
             for handle in self.config.handles:
-                try:
-                    params = {"limit": self.config.limit if self.config else 50}
-                    if self.config and self.config.tweet_type:
-                        params["type"] = self.config.tweet_type
+                # Fetch and filter tweets
+                raw_tweets = await self._fetch_single_handle(client, handle)
+                filtered_tweets = self._apply_time_filter(raw_tweets)
+                
+                # Convert to Tweet objects
+                for tweet in filtered_tweets:
+                    all_tweets.append(Tweet(**tweet))
 
-                    response = await client.get(
-                        f"https://ai.rss3.io/api/v1/tweets/{handle}", params=params
-                    )
-                    if response.status_code != 200:
-                        logger.error(
-                            f"Error fetching tweets for @{handle}: HTTP {response.status_code}"
-                        )
-                        continue
-
-                    tweets = response.json()
-                    if not tweets:
-                        logger.info(f"No tweets found for @{handle}")
-                        continue
-
-                    # Apply time filter if configured
-                    time_threshold = self.config.time_threshold if self.config else None
-                    if time_threshold:
-                        filtered_tweets = []
-                        for tweet in tweets:
-                            tweet_time = datetime.fromisoformat(
-                                tweet["created_at"]
-                            ).replace(tzinfo=UTC)
-                            if tweet_time >= time_threshold:
-                                filtered_tweets.append(tweet)
-                        tweets = filtered_tweets
-
-                        if not tweets:
-                            logger.info(f"No recent tweets found for @{handle}")
-                            continue
-
-                    # Add tweets to the collection
-                    for tweet in tweets:
-                        tweet_obj = Tweet(**tweet)
-                        all_tweets.append(tweet_obj)
-
-                except Exception as e:
-                    logger.error(f"Error fetching tweets for @{handle}: {str(e)}")
-                    continue
-
-        if not all_tweets:
-            return "No tweets found matching the criteria."
-
-        # Sort all tweets by creation time
-        all_tweets.sort(key=lambda x: x.created_at, reverse=True)
-
-        # Format the tweets into a readable string
-        formatted_tweets = []
-        for tweet in all_tweets:
-            created_at = tweet.created_at.strftime("%Y-%m-%d %H:%M:%S")
-            formatted_tweets.append(
-                f"TWEET_ID={tweet.tweet_id}||"
-                f"@{tweet.handle} [{created_at}] {tweet.type.upper()}: {tweet.content}"
-            )
-
-        return "\n\n".join(formatted_tweets)
+        result = self._format_output(all_tweets)
+        logger.info(f"Final output:\n{result}")
+        return result
