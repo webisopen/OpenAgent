@@ -30,7 +30,11 @@ async def init_tools(agent_config: AgentConfig) -> List[Any]:
             # First try direct import
             try:
                 module = importlib.import_module(f"openagent.tools.{module_path}")
-                tools.extend(await load_tools_from_module(module, tool_config, agent_config.core_model))
+                tools.extend(
+                    await load_tools_from_module(
+                        module, tool_config, agent_config.core_model
+                    )
+                )
                 continue
             except ImportError:
                 pass
@@ -47,7 +51,9 @@ async def init_tools(agent_config: AgentConfig) -> List[Any]:
                                 f"openagent.tools.{name}.{parts[0]}"
                             )
                             tools.extend(
-                                await load_tools_from_module(sub_module, tool_config, agent_config.core_model)
+                                await load_tools_from_module(
+                                    sub_module, tool_config, agent_config.core_model
+                                )
                             )
                             break
                         except ImportError:
@@ -77,7 +83,9 @@ async def init_tools(agent_config: AgentConfig) -> List[Any]:
     return tools
 
 
-async def load_tools_from_module(module: Any, tool_config: dict, core_model: ModelConfig) -> List[Any]:
+async def load_tools_from_module(
+    module: Any, tool_config: dict, core_model: ModelConfig
+) -> List[Any]:
     """Load all tool classes from a module
 
     Args:
@@ -99,8 +107,8 @@ async def load_tools_from_module(module: Any, tool_config: dict, core_model: Mod
             # Initialize the tool instance
             init_params = inspect.signature(obj.__init__).parameters
             tool_init_args = {}
-            if 'core_model' in init_params:
-                tool_init_args['core_model'] = core_model
+            if "core_model" in init_params:
+                tool_init_args["core_model"] = core_model
 
             tool_instance = obj(**tool_init_args)
 

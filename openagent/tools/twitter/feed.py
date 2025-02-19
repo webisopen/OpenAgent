@@ -76,7 +76,9 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
         """Setup the function with configuration"""
         self.config = config
 
-    async def _fetch_single_handle(self, client: httpx.AsyncClient, handle: str) -> List[dict]:
+    async def _fetch_single_handle(
+        self, client: httpx.AsyncClient, handle: str
+    ) -> List[dict]:
         """Fetch tweets for a single handle with retry logic"""
         params = {"limit": self.config.limit if self.config else 50}
         if self.config and self.config.tweet_type:
@@ -86,13 +88,17 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
             try:
                 logger.info(f"Fetching tweets for @{handle}")
                 response = await client.get(f"{self.base_url}/{handle}", params=params)
-                
+
                 if response.status_code != 200:
                     if retry_count < self.max_retries - 1:
-                        logger.error(f"HTTP {response.status_code}, retrying {retry_count + 2}/{self.max_retries}")
+                        logger.error(
+                            f"HTTP {response.status_code}, retrying {retry_count + 2}/{self.max_retries}"
+                        )
                         await asyncio.sleep(self.retry_delay)
                         continue
-                    logger.error(f"Failed after {self.max_retries} attempts: HTTP {response.status_code}")
+                    logger.error(
+                        f"Failed after {self.max_retries} attempts: HTTP {response.status_code}"
+                    )
                     return []
 
                 tweets = response.json() or []
@@ -102,12 +108,14 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
 
             except Exception as e:
                 if retry_count < self.max_retries - 1:
-                    logger.error(f"Error (attempt {retry_count + 1}/{self.max_retries}): {str(e)}")
+                    logger.error(
+                        f"Error (attempt {retry_count + 1}/{self.max_retries}): {str(e)}"
+                    )
                     await asyncio.sleep(self.retry_delay)
                 else:
                     logger.error(f"Failed after {self.max_retries} attempts: {str(e)}")
                     return []
-        
+
         return []
 
     def _apply_time_filter(self, tweets: List[dict]) -> List[dict]:
@@ -123,7 +131,7 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
 
         if not filtered:
             logger.info("No tweets found after applying time filter")
-        
+
         return filtered
 
     def _format_output(self, tweets: List[Tweet]) -> str:
@@ -133,7 +141,7 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
 
         tweets.sort(key=lambda x: x.created_at, reverse=True)
         formatted = []
-        
+
         for tweet in tweets:
             created_at = tweet.created_at.strftime("%Y-%m-%d %H:%M:%S")
             formatted.append(
@@ -153,7 +161,7 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
                 # Fetch and filter tweets
                 raw_tweets = await self._fetch_single_handle(client, handle)
                 filtered_tweets = self._apply_time_filter(raw_tweets)
-                
+
                 # Convert to Tweet objects
                 for tweet in filtered_tweets:
                     all_tweets.append(Tweet(**tweet))
