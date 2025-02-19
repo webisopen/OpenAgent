@@ -16,6 +16,8 @@ tasks:
     schedule:
       type: "local"  # This task uses local scheduling
     interval: 5
+    # The delay_variation (in seconds) specifies the maximum random delay that can be added to the interval
+    delay_variation: 2
     query: "Find out the current price of BTC, then tweet it."
 
 tools:

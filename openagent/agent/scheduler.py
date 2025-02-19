@@ -1,5 +1,6 @@
 import asyncio
 import threading
+import random
 from loguru import logger
 from celery import Celery
 from celery.apps.worker import Worker as CeleryWorker
@@ -32,15 +33,22 @@ class SchedulerManager:
                 self._init_celery_task(task_id, task_config, task_runner)
             else:
                 # Default to local scheduler
+                async def task_wrapper(query, delay_variation):
+                    if delay_variation > 0:
+                        delay = random.uniform(0, delay_variation)
+                        logger.debug(f"Task '{task_id}' sleeping for {delay} seconds")
+                        await asyncio.sleep(delay)
+                    await task_runner(query)
+
                 self.scheduler.add_job(
-                    func=task_runner,
+                    func=task_wrapper,
                     trigger=IntervalTrigger(seconds=task_config.interval),
-                    args=[task_config.query],
+                    args=[task_config.query, task_config.delay_variation],
                     id=task_id,
                     name=f"Task_{task_id}",
                 )
                 logger.info(
-                    f"Scheduled local task '{task_id}' with interval: {task_config.interval} seconds"
+                    f"Scheduled local task '{task_id}' with interval: {task_config.interval} seconds and delay variation: {task_config.delay_variation} seconds"
                 )
 
         # Start the local scheduler if we have any local tasks
@@ -96,6 +104,9 @@ class SchedulerManager:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 try:
+                    if task_config.delay_variation > 0:
+                        delay = random.uniform(0, task_config.delay_variation)
+                        loop.run_until_complete(asyncio.sleep(delay))
                     result = loop.run_until_complete(task_runner(task_config.query))
                     return result
                 finally:

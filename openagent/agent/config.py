@@ -36,6 +36,9 @@ class SchedulerConfig(BaseModel):
 
 class TaskConfig(BaseModel):
     interval: int = Field(description="Interval in seconds between task executions")
+    delay_variation: int = Field(
+        default=0, description="Maximum random delay in seconds to add to the interval"
+    )
     query: str
     schedule: SchedulerConfig = Field(
         default_factory=lambda: SchedulerConfig(type="local"),
@@ -47,6 +50,13 @@ class TaskConfig(BaseModel):
     def validate_interval(cls, v):
         if v < 1:
             raise ValueError("Interval must be greater than 1 second")
+        return v
+
+    @classmethod
+    @field_validator("delay_variation")
+    def validate_delay_variation(cls, v):
+        if v < 0:
+            raise ValueError("Delay variation must be non-negative")
         return v
 
 
