@@ -5,7 +5,6 @@ import sys
 import click
 from dotenv import load_dotenv
 import uvicorn
-import msvcrt  # Windows only
 import threading
 import time
 
@@ -27,6 +26,19 @@ async def shutdown(agent, loop):
         task.cancel()
     await asyncio.gather(*tasks, return_exceptions=True)
     loop.stop()
+
+
+def check_exit_windows(loop):
+    """Check for exit command on Windows (press 'q' to quit)"""
+    import msvcrt
+
+    while True:
+        if msvcrt.kbhit():
+            key = msvcrt.getch().decode("utf-8").lower()
+            if key == "q":
+                print("\nShutting down...")
+                os._exit(0)  # Force exit
+        time.sleep(1)
 
 
 @click.group()
@@ -53,6 +65,7 @@ def start(file, host, port):
 
     if sys.platform == "win32":
         signal.signal(signal.SIGINT, win_handler)
+        check_exit_func = check_exit_windows
     else:
         loop.add_signal_handler(
             signal.SIGINT, lambda: asyncio.create_task(shutdown(agent, loop))
@@ -60,7 +73,6 @@ def start(file, host, port):
         loop.add_signal_handler(
             signal.SIGTERM, lambda: asyncio.create_task(shutdown(agent, loop))
         )
-
     # Create FastAPI config
     config = uvicorn.Config(app, host=host, port=port, loop=loop)
     server = uvicorn.Server(config)
@@ -70,7 +82,7 @@ def start(file, host, port):
     loop.create_task(server.serve())
 
     # Start exit command checker in a separate thread
-    exit_thread = threading.Thread(target=check_exit, args=(loop,), daemon=True)
+    exit_thread = threading.Thread(target=check_exit_func, args=(loop,), daemon=True)
     exit_thread.start()
 
     try:
@@ -79,17 +91,6 @@ def start(file, host, port):
         loop.run_until_complete(shutdown(agent, loop))
     finally:
         loop.close()
-
-
-def check_exit(loop):
-    """Check for exit command (press 'q' to quit)"""
-    while True:
-        if msvcrt.kbhit():
-            key = msvcrt.getch().decode("utf-8").lower()
-            if key == "q":
-                print("\nShutting down...")
-                os._exit(0)  # Force exit
-        time.sleep(1)
 
 
 if __name__ == "__main__":
