@@ -5,6 +5,9 @@ import sys
 import click
 from dotenv import load_dotenv
 import uvicorn
+import msvcrt  # Windows only
+import threading
+import time
 
 from openagent.agent.agent import OpenAgent
 from openagent.api.app import app, set_agent
@@ -66,12 +69,27 @@ def start(file, host, port):
     loop.create_task(agent.start())
     loop.create_task(server.serve())
 
+    # Start exit command checker in a separate thread
+    exit_thread = threading.Thread(target=check_exit, args=(loop,), daemon=True)
+    exit_thread.start()
+
     try:
         loop.run_forever()
     except KeyboardInterrupt:
         loop.run_until_complete(shutdown(agent, loop))
     finally:
         loop.close()
+
+
+def check_exit(loop):
+    """Check for exit command (press 'q' to quit)"""
+    while True:
+        if msvcrt.kbhit():
+            key = msvcrt.getch().decode("utf-8").lower()
+            if key == "q":
+                print("\nShutting down...")
+                os._exit(0)  # Force exit
+        time.sleep(1)
 
 
 if __name__ == "__main__":
