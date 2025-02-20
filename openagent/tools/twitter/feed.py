@@ -1,5 +1,5 @@
 from typing import Optional, List
-
+import os
 from loguru import logger
 from pydantic import BaseModel
 import httpx
@@ -7,7 +7,22 @@ from datetime import datetime, timedelta, UTC
 import re
 import asyncio
 
+from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from openagent.core.database import sqlite
 from openagent.core.tool import Tool
+
+Base = declarative_base()
+
+
+class ProcessedTweet(Base):
+    __tablename__ = "processed_tweets"
+
+    id = Column(Integer, primary_key=True)
+    tweet_id = Column(String, unique=True)
+    handle = Column(String)
+    created_at = Column(DateTime, default=datetime.now(UTC))
 
 
 class Tweet(BaseModel):
@@ -63,6 +78,13 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
         self.base_url = "https://ai.rss3.io/api/v1/tweets"
         self.max_retries = 5
         self.retry_delay = 1
+
+        # Initialize database
+        db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
+        self.engine = sqlite.create_engine(db_path)
+        Base.metadata.create_all(self.engine)
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
 
     @property
     def name(self) -> str:
@@ -134,6 +156,34 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
 
         return filtered
 
+    def _filter_processed_tweets(self, tweets: List[dict]) -> List[dict]:
+        """Filter out tweets that have already been processed"""
+        filtered = []
+        for tweet in tweets:
+            # Check if tweet exists in database
+            exists = (
+                self.session.query(ProcessedTweet)
+                .filter_by(tweet_id=tweet["tweet_id"])
+                .first()
+            )
+
+            if not exists:
+                # Add to database and filtered list
+                processed_tweet = ProcessedTweet(
+                    tweet_id=tweet["tweet_id"],
+                    handle=tweet["handle"],
+                )
+                self.session.add(processed_tweet)
+                filtered.append(tweet)
+
+        # Commit new tweets to database
+        self.session.commit()
+
+        if not filtered:
+            logger.info("All tweets have been processed before")
+
+        return filtered
+
     def _format_output(self, tweets: List[Tweet]) -> str:
         """Format tweets into readable output"""
         if not tweets:
@@ -160,10 +210,12 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
             for handle in self.config.handles:
                 # Fetch and filter tweets
                 raw_tweets = await self._fetch_single_handle(client, handle)
-                filtered_tweets = self._apply_time_filter(raw_tweets)
+                time_filtered_tweets = self._apply_time_filter(raw_tweets)
+                # Add database filtering
+                unprocessed_tweets = self._filter_processed_tweets(time_filtered_tweets)
 
                 # Convert to Tweet objects
-                for tweet in filtered_tweets:
+                for tweet in unprocessed_tweets:
                     all_tweets.append(Tweet(**tweet))
 
         result = self._format_output(all_tweets)
