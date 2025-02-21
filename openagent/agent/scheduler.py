@@ -8,6 +8,7 @@ from celery.apps.beat import Beat as CeleryBeat
 from celery.beat import PersistentScheduler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 
 from openagent.agent.config import TaskConfig
 
@@ -32,7 +33,6 @@ class SchedulerManager:
             if task_config.schedule.type == "queue":
                 self._init_celery_task(task_id, task_config, task_runner)
             else:
-                # Default to local scheduler
                 async def task_wrapper(query, delay_variation):
                     if delay_variation > 0:
                         delay = random.uniform(0, delay_variation)
@@ -40,16 +40,26 @@ class SchedulerManager:
                         await asyncio.sleep(delay)
                     await task_runner(query)
 
-                self.scheduler.add_job(
-                    func=task_wrapper,
-                    trigger=IntervalTrigger(seconds=task_config.interval),
-                    args=[task_config.query, task_config.delay_variation],
-                    id=task_id,
-                    name=f"Task_{task_id}",
-                )
-                logger.info(
-                    f"Scheduled local task '{task_id}' with interval: {task_config.interval} seconds and delay variation: {task_config.delay_variation} seconds"
-                )
+                if task_config.cron:
+                    self.scheduler.add_job(
+                        func=task_wrapper,
+                        trigger=CronTrigger.from_crontab(task_config.cron),
+                        args=[task_config.query, task_config.delay_variation],
+                        id=task_id,
+                        name=f"Task_{task_id}",
+                    )
+                    logger.info(f"Scheduled cron task '{task_id}' with cron expression: {task_config.cron}")
+                else:
+                    self.scheduler.add_job(
+                        func=task_wrapper,
+                        trigger=IntervalTrigger(seconds=task_config.interval),
+                        args=[task_config.query, task_config.delay_variation],
+                        id=task_id,
+                        name=f"Task_{task_id}",
+                    )
+                    logger.info(
+                        f"Scheduled local task '{task_id}' with interval: {task_config.interval} seconds and delay variation: {task_config.delay_variation} seconds"
+                    )
 
         # Start the local scheduler if we have any local tasks
         if any(task.schedule.type == "local" for task in tasks_config.values()):
