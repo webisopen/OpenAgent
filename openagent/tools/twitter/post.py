@@ -66,6 +66,10 @@ class TwitterPostTool(Tool[TwitterToolConfig]):
         if self.debug:
             return f"Debug mode enabled. Skipping tweet post: {text}"
 
+        if text.lower().strip() == "not_relevant":
+            logger.info("Skipping post for tweet: marked as not relevant")
+            return "Skipped: Tweet marked as not relevant"
+
         try:
             response = client.create_tweet(text=text)
             if response.data:
