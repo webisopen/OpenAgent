@@ -10,6 +10,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 from openagent.agent.config import ModelConfig
 from openagent.core.tool import Tool
+from openagent.core.utils.fetch_json import fetch_json
 
 
 @dataclass
@@ -112,69 +113,51 @@ class ArbitrumCompoundMarketTool(Tool[CompoundMarketConfig]):
 
     @staticmethod
     async def _fetch_compound_arbitrum_market_data() -> list[CompoundMarketData]:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                "https://v3-api.compound.finance/market/all-networks/all-contracts/summary"
+        results = await fetch_json(
+            url="https://v3-api.compound.finance/market/all-networks/all-contracts/summary"
+        )
+
+        # Filter for Arbitrum markets (chain_id 42161)
+        arbitrum_markets = [market for market in results if market["chain_id"] == 42161]
+
+        market_data = []
+
+        for market in arbitrum_markets:
+            # Fetch historical data for each address
+            historical_data = await fetch_json(
+                f"https://v3-api.compound.finance/market/arbitrum-mainnet/{market['comet']['address']}/historical/summary"
             )
 
-            if response.status_code != 200:
-                raise Exception(
-                    f"Failed to fetch Compound market data: {response.text}, {response.status_code}"
+            # Sort historical data by timestamp in descending order (newest first)
+            sorted_data = sorted(
+                historical_data, key=lambda x: x["timestamp"], reverse=True
+            )
+
+            if len(sorted_data) < 2:
+                logger.warning(
+                    f"Insufficient historical data for {market['comet']['address']}"
                 )
+                continue
 
-            results = response.json()
+            # Convert string APRs to float
+            current_borrow_apr = float(sorted_data[0]["borrow_apr"])
+            current_supply_apr = float(sorted_data[0]["supply_apr"])
+            yesterday_borrow_apr = float(sorted_data[1]["borrow_apr"])
+            yesterday_supply_apr = float(sorted_data[1]["supply_apr"])
 
-            # Filter for Arbitrum markets (chain_id 42161)
-            arbitrum_markets = [
-                market for market in results if market["chain_id"] == 42161
-            ]
+            # Calculate 24h changes
+            borrow_apr_change_24h = current_borrow_apr - yesterday_borrow_apr
+            supply_apr_change_24h = current_supply_apr - yesterday_supply_apr
 
-            market_data = []
-
-            for market in arbitrum_markets:
-                # Fetch historical data for each address
-                historical_response = await client.get(
-                    f"https://v3-api.compound.finance/market/arbitrum-mainnet/{market['comet']['address']}/historical/summary"
+            market_data.append(
+                CompoundMarketData(
+                    address=market["comet"]["address"],
+                    collateralAssets=market["collateral_asset_symbols"],
+                    borrowAPR=current_borrow_apr,
+                    supplyAPR=current_supply_apr,
+                    borrowAPRChange24h=borrow_apr_change_24h,
+                    supplyAPRChange24h=supply_apr_change_24h,
                 )
+            )
 
-                if historical_response.status_code != 200:
-                    logger.warning(
-                        f"Failed to fetch historical data for {market['comet']['address']}: {historical_response.text}, {historical_response.status_code}"
-                    )
-                    continue
-
-                historical_data = historical_response.json()
-
-                # Sort historical data by timestamp in descending order (newest first)
-                sorted_data = sorted(
-                    historical_data, key=lambda x: x["timestamp"], reverse=True
-                )
-
-                if len(sorted_data) < 2:
-                    logger.warning(
-                        f"Insufficient historical data for {market['comet']['address']}"
-                    )
-                    continue
-
-                # Convert string APRs to float
-                current_borrow_apr = float(sorted_data[0]["borrow_apr"])
-                current_supply_apr = float(sorted_data[0]["supply_apr"])
-                yesterday_borrow_apr = float(sorted_data[1]["borrow_apr"])
-                yesterday_supply_apr = float(sorted_data[1]["supply_apr"])
-
-                # Calculate 24h changes
-                borrow_apr_change_24h = current_borrow_apr - yesterday_borrow_apr
-                supply_apr_change_24h = current_supply_apr - yesterday_supply_apr
-
-                market_data.append(
-                    CompoundMarketData(
-                        address=market["comet"]["address"],
-                        collateralAssets=market["collateral_asset_symbols"],
-                        borrowAPR=current_borrow_apr,
-                        supplyAPR=current_supply_apr,
-                        borrowAPRChange24h=borrow_apr_change_24h,
-                        supplyAPRChange24h=supply_apr_change_24h,
-                    )
-                )
-
-            return market_data
+        return market_data

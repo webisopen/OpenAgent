@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker
 from openagent.agent.config import ModelConfig
 from openagent.core.database import sqlite
 from openagent.core.tool import Tool
+from openagent.core.utils.fetch_json import fetch_json
 from openagent.core.utils.json_equal import json_equal
 
 Base = declarative_base()
@@ -149,28 +150,23 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
             return error_msg
 
     async def _fetch_pendle_voter_apy(self) -> PendleVoterApy:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://api-v2.pendle.finance/bff/v1/ve-pendle/pool-voter-apy"
-            )
-            if response.status_code != 200:
-                raise Exception(
-                    f"API request failed with status {response.status_code}"
-                )
+        # Get Pendle voter data from API
+        result = await fetch_json(
+            url="https://api-v2.pendle.finance/bff/v1/ve-pendle/pool-voter-apy"
+        )
 
-            result = response.json()
-            if not result["results"]:
-                raise Exception("API response is empty")
+        if not result["results"]:
+            raise Exception("API response is empty")
 
-            data = self._filter_pendle_voter_apy(result)
+        data = self._filter_pendle_voter_apy(result)
 
-            # Create new snapshot
-            snapshot = PendleVoterApy(
-                data=str(data),
-                created_at=datetime.now(UTC),
-            )
+        # Create new snapshot
+        snapshot = PendleVoterApy(
+            data=str(data),
+            created_at=datetime.now(UTC),
+        )
 
-            return snapshot
+        return snapshot
 
     @staticmethod
     def _filter_pendle_voter_apy(apy_data: dict) -> dict:
@@ -186,9 +182,7 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
             change_direction = (
                 "increased"
                 if last_epoch_change > 0
-                else "decreased"
-                if last_epoch_change < 0
-                else "unchanged"
+                else "decreased" if last_epoch_change < 0 else "unchanged"
             )
 
             # Convert to percentage strings, use absolute value for lastEpochChange

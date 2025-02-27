@@ -19,6 +19,7 @@ from langchain.chat_models import init_chat_model
 from openagent.agent.config import ModelConfig
 from openagent.core.database import sqlite
 from openagent.core.tool import Tool
+from openagent.core.utils.fetch_json import fetch_json
 
 Base = declarative_base()
 
@@ -234,25 +235,18 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
             return error_msg
 
     async def _fetch_pendle_market_data(self) -> PendleMarket:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://api-v2.pendle.finance/bff/v3/markets/all?isActive=true"
-            )
-            if response.status_code != 200:
-                raise Exception(
-                    f"API request failed with status {response.status_code}"
-                )
+        # Get Pendle market data from API
+        result = await fetch_json(
+            url="https://api-v2.pendle.finance/bff/v3/markets/all?isActive=true"
+        )
 
-            # Get Pendle market data from API
-            results = response.json()
+        # Process the data
+        snapshot = self._process_market_data(result)
 
-            # Process the data
-            snapshot = self._process_market_data(results)
-
-            return PendleMarket(
-                data=json.dumps(asdict(snapshot)),
-                created_at=datetime.now(UTC),
-            )
+        return PendleMarket(
+            data=json.dumps(asdict(snapshot)),
+            created_at=datetime.now(UTC),
+        )
 
     @staticmethod
     def _process_market_data(results: dict) -> PendleMarketSnapshot:
