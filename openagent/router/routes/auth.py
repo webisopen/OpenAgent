@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Header, HTTPException, status
+from loguru import logger
 
 from openagent.router.routes.models.auth import Auth
 from openagent.router.routes.models.response import AuthResponse, ResponseModel
@@ -25,13 +26,42 @@ def login(
     signature: Annotated[str, Header()],
     nonce: Annotated[str, Header()],
 ) -> ResponseModel:
-    if auth_handler.verify_wallet_signature(wallet_address, signature, nonce):
-        token = auth_handler.encode_token(wallet_address)
-        return ResponseModel(
-            code=status.HTTP_200_OK,
-            message="Login successful",
-            data=AuthResponse(token=token, wallet_address=wallet_address),
+    logger.info(f"Login attempt from wallet: {wallet_address}")
+    logger.debug(f"Received signature length: {len(signature)}")
+    logger.debug(f"Received nonce: {nonce}")
+
+    try:
+        if auth_handler.verify_wallet_signature(wallet_address, signature, nonce):
+            logger.info(
+                f"Signature verification successful for wallet: {wallet_address}"
+            )
+            try:
+                token = auth_handler.encode_token(wallet_address)
+                logger.info(
+                    f"Successfully generated token for wallet: {wallet_address}"
+                )
+                return ResponseModel(
+                    code=status.HTTP_200_OK,
+                    message="Login successful",
+                    data=AuthResponse(token=token, wallet_address=wallet_address),
+                )
+            except Exception as e:
+                logger.error(f"Failed to encode token: {str(e)}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Token generation failed: {str(e)}",
+                )
+        logger.warning(f"Invalid signature for wallet: {wallet_address}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature"
         )
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature"
-    )
+    except HTTPException:
+        # Re-raise HTTPExceptions
+        raise
+    except Exception as e:
+        # Catch any unexpected errors
+        logger.error(f"Unexpected error during login: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login failed: {str(e)}",
+        )

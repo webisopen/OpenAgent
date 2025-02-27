@@ -26,11 +26,23 @@ docling = "^2.20.0"
 langchain = "^0.3.18"
 langchain-openai = "^0.3.4"
 pydantic = "^2.10.6"
-celery = {extras = ["redis"], version = "^5.4.0"}
+celery = { extras = ["redis"], version = "^5.4.0" }
 apscheduler = "^3.11.0"
 fastapi = "^0.115.8"
 uvicorn = "^0.34.0"
 sqlalchemy-orm = "^1.2.10"
+web3 = "^7.7.0"
+eth-account = "^0.13.4"
+anthropic = "^0.42.0"
+google-generativeai = "^0.8.3"
+ollama = "^0.4.5"
+phidata = "^2.7.7"
+psycopg2-binary = ">=2.9.10,<3.0.0"
+atlas-provider-sqlalchemy = ">=0.2.4,<0.3.0"
+alembic = ">=1.14.0,<2.0.0"
+redis = ">=5.2.1,<6.0.0"
+pytest = ">=8.3.4,<9.0.0"
+pyjwt = "^2.10.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
@@ -46,9 +58,24 @@ warn_redundant_casts = true
 warn_return_any = true
 check_untyped_defs = true
 show_error_codes = true
-disable_error_code = ["arg-type", "call-arg", "union-attr", "operator", "unused-ignore",
-    "override", "attr-defined", "valid-type", "import-not-found", "import-untyped",
-    "import-untyped", "assignment", "no-any-return", "no-any-unimported", "import-not-found", "misc"]
+disable_error_code = [
+    "arg-type",
+    "call-arg",
+    "union-attr",
+    "operator",
+    "unused-ignore",
+    "override",
+    "attr-defined",
+    "valid-type",
+    "import-not-found",
+    "import-untyped",
+    "import-untyped",
+    "assignment",
+    "no-any-return",
+    "no-any-unimported",
+    "import-not-found",
+    "misc",
+]
 
 [build-system]
 requires = ["poetry-core"]

@@ -15,7 +15,7 @@ security = HTTPBearer(auto_error=False)
 class Auth:
     def __init__(self):
         self.secret = os.getenv("JWT_SECRET_KEY", "your-secret-key")
-        self.exp_time = 24
+        self.exp_time = 24 * 7
 
     def encode_token(self, wallet_address: str) -> str:
         payload = {
