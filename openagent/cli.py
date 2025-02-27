@@ -9,7 +9,8 @@ import time
 
 from dotenv import load_dotenv
 from openagent.agent.agent import OpenAgent
-from openagent.api.app import app, set_agent
+from openagent.router.server import app
+from openagent.router.routes.chat import set_agent
 from openagent.database import DatabaseManager
 
 load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
@@ -86,7 +87,7 @@ def run_server(host, port, agent=None):
         )
         check_exit_func = check_exit_unix
 
-    # Create FastAPI config
+    # Create FastAPI config using the refactored app from api/app.py
     config = uvicorn.Config(app, host=host, port=port, loop=loop)
     server = uvicorn.Server(config)
 
