@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from openagent.agent.config import ModelConfig
 from openagent.core.tool import Tool
 
+
 @dataclass
 class CompoundMarketData:
     address: str
@@ -20,11 +21,13 @@ class CompoundMarketData:
     borrowAPRChange24h: float
     supplyAPRChange24h: float
 
+
 class CompoundMarketConfig(BaseModel):
     model: Optional[ModelConfig] = Field(
         default=None,
-        description="Model configuration for LLM. If not provided, will use agent's core model",
+        description="Model configuration for this tool. If not provided, will use agent's core model",
     )
+
 
 class ArbitrumCompoundMarketTool(Tool[CompoundMarketConfig]):
     def __init__(self, core_model=None):
@@ -107,20 +110,25 @@ class ArbitrumCompoundMarketTool(Tool[CompoundMarketConfig]):
             logger.error(f"Error in {self.name} tool: {e}")
             return f"Error in {self.name} tool: {e}"
 
-    async def _fetch_compound_arbitrum_market_data(self) -> list[CompoundMarketData]:
+    @staticmethod
+    async def _fetch_compound_arbitrum_market_data() -> list[CompoundMarketData]:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 "https://v3-api.compound.finance/market/all-networks/all-contracts/summary"
             )
 
             if response.status_code != 200:
-                raise Exception(f"Failed to fetch Compound market data: {response.text}, {response.status_code}")
+                raise Exception(
+                    f"Failed to fetch Compound market data: {response.text}, {response.status_code}"
+                )
 
             results = response.json()
 
             # Filter for Arbitrum markets (chain_id 42161)
-            arbitrum_markets = [market for market in results if market["chain_id"] == 42161]
-            
+            arbitrum_markets = [
+                market for market in results if market["chain_id"] == 42161
+            ]
+
             market_data = []
 
             for market in arbitrum_markets:
@@ -130,16 +138,22 @@ class ArbitrumCompoundMarketTool(Tool[CompoundMarketConfig]):
                 )
 
                 if historical_response.status_code != 200:
-                    logger.warning(f"Failed to fetch historical data for {market['comet']['address']}: {historical_response.text}, {historical_response.status_code}")
+                    logger.warning(
+                        f"Failed to fetch historical data for {market['comet']['address']}: {historical_response.text}, {historical_response.status_code}"
+                    )
                     continue
-                
+
                 historical_data = historical_response.json()
 
                 # Sort historical data by timestamp in descending order (newest first)
-                sorted_data = sorted(historical_data, key=lambda x: x['timestamp'], reverse=True)
-                
+                sorted_data = sorted(
+                    historical_data, key=lambda x: x["timestamp"], reverse=True
+                )
+
                 if len(sorted_data) < 2:
-                    logger.warning(f"Insufficient historical data for {market['comet']['address']}")
+                    logger.warning(
+                        f"Insufficient historical data for {market['comet']['address']}"
+                    )
                     continue
 
                 # Convert string APRs to float
@@ -148,20 +162,19 @@ class ArbitrumCompoundMarketTool(Tool[CompoundMarketConfig]):
                 yesterday_borrow_apr = float(sorted_data[1]["borrow_apr"])
                 yesterday_supply_apr = float(sorted_data[1]["supply_apr"])
 
-
                 # Calculate 24h changes
                 borrow_apr_change_24h = current_borrow_apr - yesterday_borrow_apr
                 supply_apr_change_24h = current_supply_apr - yesterday_supply_apr
 
                 market_data.append(
                     CompoundMarketData(
-                        address=market['comet']['address'],
-                        collateralAssets=market['collateral_asset_symbols'],
+                        address=market["comet"]["address"],
+                        collateralAssets=market["collateral_asset_symbols"],
                         borrowAPR=current_borrow_apr,
                         supplyAPR=current_supply_apr,
                         borrowAPRChange24h=borrow_apr_change_24h,
-                        supplyAPRChange24h=supply_apr_change_24h
+                        supplyAPRChange24h=supply_apr_change_24h,
                     )
                 )
-            
+
             return market_data
