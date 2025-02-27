@@ -36,9 +36,9 @@ class CompoundMarketConfig(BaseModel):
 
 
 class CompoundMarketTool(Tool[CompoundMarketConfig]):
-    def __init__(self, core_model=None, chain_ids: List[int] = []):
+    def __init__(self, core_model=None):
         super().__init__()
-        self.chain_ids = chain_ids
+        self.chain_ids = None
         self.core_model = core_model
         self.tool_model = None
         self.tool_prompt = None
@@ -55,6 +55,8 @@ class CompoundMarketTool(Tool[CompoundMarketConfig]):
         model_config = config.model if config.model else self.core_model
         if not model_config:
             raise RuntimeError("No model configuration provided")
+
+        self.chain_ids = config.chain_ids
 
         self.tool_model = init_chat_model(
             model=model_config.name,
