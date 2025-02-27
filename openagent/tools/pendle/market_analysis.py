@@ -3,14 +3,14 @@ import os
 from datetime import datetime, UTC
 from dataclasses import dataclass, asdict
 from heapq import nlargest
-from typing import Optional
+from typing import Optional, Literal
 
 import httpx
 from pydantic import BaseModel, Field
 from textwrap import dedent
 from loguru import logger
 
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, create_engine as sa_create_engine, text as sa_text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from langchain.prompts import PromptTemplate
@@ -51,12 +51,28 @@ class PendleMarket(Base):
     created_at = Column(DateTime, default=datetime.now(UTC))
 
 
+class DatabaseConfig(BaseModel):
+    """Database configuration for the tool"""
+    type: Literal["sqlite", "postgres"] = Field(
+        default="sqlite",
+        description="Type of database to use"
+    )
+    url: Optional[str] = Field(
+        default=None,
+        description="Database URL. For postgres: postgresql://user:password@host:port/database, for sqlite: sqlite:///path/to/file.db"
+    )
+
+
 class PendleMarketConfig(BaseModel):
     """Configuration for data analysis tool"""
 
     model: Optional[ModelConfig] = Field(
         default=None,
         description="Model configuration for LLM. If not provided, will use agent's core model",
+    )
+    database: Optional[DatabaseConfig] = Field(
+        default=None,
+        description="Database configuration. If not provided, will use SQLite with default path",
     )
 
 
@@ -68,9 +84,58 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         self.core_model = core_model
         self.tool_model = None
         self.tool_prompt = None
-        # Construct the path to the SQLite database file
-        db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
-        self.engine = sqlite.create_engine(db_path)
+        self.engine = None
+        self.session = None
+
+    def _init_database(self, config: Optional[DatabaseConfig] = None) -> None:
+        """Initialize database connection based on configuration"""
+        if not config:
+            # Default to SQLite with default path
+            db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
+            if not os.path.exists(os.path.dirname(db_path)):
+                os.makedirs(os.path.dirname(db_path))
+            self.engine = sqlite.create_engine(db_path)
+        else:
+            if config.type == "sqlite":
+                if config.url:
+                    self.engine = sa_create_engine(config.url)
+                else:
+                    db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
+                    if not os.path.exists(os.path.dirname(db_path)):
+                        os.makedirs(os.path.dirname(db_path))
+                    self.engine = sqlite.create_engine(db_path)
+            else:  # postgres
+                if not config.url:
+                    raise ValueError("Database URL is required for PostgreSQL configuration")
+                
+                # Parse the database URL to get the database name and connection info
+                from urllib.parse import urlparse
+                url = urlparse(config.url)
+                db_name = url.path[1:]  # Remove leading '/'
+                base_url = f"{url.scheme}://{url.netloc}"
+
+                # Create a connection to the default postgres database
+                default_engine = sa_create_engine(f"{base_url}/postgres")
+                default_conn = default_engine.connect()
+                default_conn.execute(sa_text("commit"))  # Close any open transactions
+
+                try:
+                    # Check if database exists
+                    result = default_conn.execute(sa_text(f"SELECT 1 FROM pg_database WHERE datname = :db_name"), {"db_name": db_name})
+                    if not result.scalar():
+                        # Create database if it doesn't exist
+                        default_conn.execute(sa_text("commit"))
+                        default_conn.execute(sa_text(f'CREATE DATABASE "{db_name}"'))
+                        logger.info(f"Created database {db_name}")
+                except Exception as e:
+                    logger.error(f"Error creating database: {e}")
+                finally:
+                    default_conn.close()
+                    default_engine.dispose()
+
+                # Connect to the target database
+                self.engine = sa_create_engine(config.url)
+
         Base.metadata.create_all(self.engine)
         session = sessionmaker(bind=self.engine)
         self.session = session()
@@ -85,6 +150,9 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
 
     async def setup(self, config: PendleMarketConfig) -> None:
         """Setup the analysis tool with model and prompt"""
+
+        # Initialize database
+        self._init_database(config.database)
 
         # Initialize the model
         model_config = config.model if config.model else self.core_model
