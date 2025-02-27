@@ -105,6 +105,25 @@ class OpenAgent:
 
         logger.success("Agent initialized successfully")
 
+    @staticmethod
+    def generate_yaml(agent, output_dir: str = "agent_deployments") -> str:
+        """Generate a YAML configuration file for an agent
+
+        This is a convenience method that delegates to the appropriate
+        YAML generator based on the agent type.
+
+        Args:
+            agent: The agent database model instance
+            output_dir: Directory to save the YAML file (defaults to agent_deployments)
+
+        Returns:
+            str: Path to the generated YAML file
+        """
+        from openagent.agent.yaml_generator import generate_twitter_agent_yaml
+
+        # For now we only support Twitter agents
+        return generate_twitter_agent_yaml(agent, output_dir)
+
     async def _run_scheduled_task(self, question: str):
         """Execute a scheduled task
 

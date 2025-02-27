@@ -1,0 +1,36 @@
+"""${message}
+
+Revision ID: ${up_revision}
+Revises: ${down_revision | comma,n}
+Create Date: ${create_date}
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+${imports if imports else ""}
+
+# revision identifiers, used by Alembic.
+revision: str = ${repr(up_revision)}
+down_revision: Union[str, None] = ${repr(down_revision)}
+branch_labels: Union[str, Sequence[str], None] = ${repr(branch_labels)}
+depends_on: Union[str, Sequence[str], None] = ${repr(depends_on)}
+
+
+def upgrade() -> None:
+    # Check if we're using SQLite (use _variable to indicate intentionally unused)
+    _is_sqlite = op.get_context().dialect.name == 'sqlite'
+
+    # SQLite-specific workarounds can be added here if needed
+
+    ${upgrades if upgrades else "pass"}
+
+
+def downgrade() -> None:
+    # Check if we're using SQLite (use _variable to indicate intentionally unused)
+    _is_sqlite = op.get_context().dialect.name == 'sqlite'
+
+    # SQLite-specific workarounds can be added here if needed
+
+    ${downgrades if downgrades else "pass"}

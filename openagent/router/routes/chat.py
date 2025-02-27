@@ -1,21 +1,12 @@
 from typing import Optional
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from openagent.agent.agent import OpenAgent
 
-# Create FastAPI app
-app = FastAPI(title="OpenAgent API", description="API for OpenAgent", version="1.0.0")
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Create router
+router = APIRouter(prefix="/chat", tags=["chat"])
 
 # Store agent instance with type hint
 agent_instance: Optional[OpenAgent] = None
@@ -30,7 +21,7 @@ class ChatResponse(BaseModel):
 
 
 # Chat endpoint
-@app.post("/chat", response_model=ChatResponse)
+@router.post("", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     if not agent_instance:
         raise HTTPException(status_code=503, detail="Agent not initialized")
@@ -48,4 +39,3 @@ def set_agent(agent: OpenAgent):
         agent (OpenAgent): The agent instance to use
     """
     global agent_instance
-    agent_instance = agent
