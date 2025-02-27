@@ -10,14 +10,14 @@ from pydantic import BaseModel, Field
 from textwrap import dedent
 from loguru import logger
 
-from sqlalchemy import Column, Integer, String, DateTime, create_engine as sa_create_engine, text as sa_text
+from sqlalchemy import Column, Integer, String, DateTime, text as sa_text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain.chat_models import init_chat_model
 from openagent.agent.config import ModelConfig
-from openagent.core.database import sqlite
+from openagent.core.database.engine import create_engine
 from openagent.core.tool import Tool
 from openagent.core.utils.fetch_json import fetch_json
 
@@ -85,61 +85,28 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         self.core_model = core_model
         self.tool_model = None
         self.tool_prompt = None
-        self.engine = None
-        self.session = None
+        self.DBSession = None
 
     def _init_database(self, config: Optional[DatabaseConfig] = None) -> None:
         """Initialize database connection based on configuration"""
-        if not config:
-            # Default to SQLite with default path
-            db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
-            if not os.path.exists(os.path.dirname(db_path)):
-                os.makedirs(os.path.dirname(db_path))
-            self.engine = sqlite.create_engine(db_path)
-        else:
-            if config.type == "sqlite":
-                if config.url:
-                    self.engine = sa_create_engine(config.url)
-                else:
-                    db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
-                    if not os.path.exists(os.path.dirname(db_path)):
-                        os.makedirs(os.path.dirname(db_path))
-                    self.engine = sqlite.create_engine(db_path)
-            else:  # postgres
-                if not config.url:
-                    raise ValueError("Database URL is required for PostgreSQL configuration")
-                
-                # Parse the database URL to get the database name and connection info
-                from urllib.parse import urlparse
-                url = urlparse(config.url)
-                db_name = url.path[1:]  # Remove leading '/'
-                base_url = f"{url.scheme}://{url.netloc}"
+        # Set default configuration if not provided
+        db_type = "sqlite"
+        db_url = None
 
-                # Create a connection to the default postgres database
-                default_engine = sa_create_engine(f"{base_url}/postgres")
-                default_conn = default_engine.connect()
-                default_conn.execute(sa_text("commit"))  # Close any open transactions
+        if config:
+            db_type = config.type
+            db_url = config.url
 
-                try:
-                    # Check if database exists
-                    result = default_conn.execute(sa_text(f"SELECT 1 FROM pg_database WHERE datname = :db_name"), {"db_name": db_name})
-                    if not result.scalar():
-                        # Create database if it doesn't exist
-                        default_conn.execute(sa_text("commit"))
-                        default_conn.execute(sa_text(f'CREATE DATABASE "{db_name}"'))
-                        logger.info(f"Created database {db_name}")
-                except Exception as e:
-                    logger.error(f"Error creating database: {e}")
-                finally:
-                    default_conn.close()
-                    default_engine.dispose()
+        # Create engine using the database module's create_engine function
+        engine = create_engine(
+            db_type=db_type,
+            db_url=db_url,
+            db_name=self.name
+        )
 
-                # Connect to the target database
-                self.engine = sa_create_engine(config.url)
-
-        Base.metadata.create_all(self.engine)
-        session = sessionmaker(bind=self.engine)
-        self.session = session()
+        # Create tables and initialize session factory
+        Base.metadata.create_all(engine)
+        self.DBSession = sessionmaker(bind=engine)
 
     @property
     def name(self) -> str:
@@ -212,19 +179,19 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         try:
             # Fetch the latest data from Pendle API
             latest_data = await self._fetch_pendle_market_data()
-
-            # Save new data to database
-            self.session.add(latest_data)
-            self.session.commit()
-
             chain = self.tool_prompt | self.tool_model | StrOutputParser()
 
-            # Run analysis chain
+            # Run analysis chain using the stored data
             response = await chain.ainvoke(
                 {
                     "data": latest_data.data,
                 }
             )
+
+            # Store the data before adding to session
+            with self.DBSession() as session:
+                session.add(latest_data)
+                session.commit()
 
             logger.info(f"{self.name} tool response: {response.strip()}.")
             return response.strip()
