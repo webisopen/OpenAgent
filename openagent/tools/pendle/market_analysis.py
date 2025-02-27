@@ -280,19 +280,16 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         new_markets = [market for market in markets if market.isNewPool]
         existing_markets = [market for market in markets if not market.isNewPool]
 
-        # Sort markets by liquidity and APY increases
-        liquidity_increase = nlargest(
-            3, existing_markets, key=lambda x: x.liquidityChange24h
-        )
-        new_market_liquidity_increase = nlargest(
-            3, new_markets, key=lambda x: x.liquidityChange24h
-        )
-        apy_increase = nlargest(
-            3, existing_markets, key=lambda x: x.impliedApyChange24h
-        )
-        new_market_apy_increase = nlargest(
-            3, new_markets, key=lambda x: x.impliedApyChange24h
-        )
+        def get_top_markets(markets: list[PendleMarketData], key_attr: str, n: int = 3) -> list[PendleMarketData]:
+            """Helper function to get top n markets based on a specific attribute"""
+            filtered_markets = [m for m in markets if m and getattr(m, key_attr) is not None]
+            return nlargest(n, filtered_markets, key=lambda x: getattr(x, key_attr))
+
+        # Get top markets for both liquidity and APY
+        liquidity_increase = get_top_markets(existing_markets, 'liquidityChange24h')
+        new_market_liquidity_increase = get_top_markets(new_markets, 'liquidityChange24h')
+        apy_increase = get_top_markets(existing_markets, 'impliedApyChange24h')
+        new_market_apy_increase = get_top_markets(new_markets, 'impliedApyChange24h')
 
         # Extract symbols from sorted markets in one step
         liquidity_increase_top_symbols = {
