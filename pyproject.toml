@@ -30,9 +30,11 @@ celery = {extras = ["redis"], version = "^5.4.0"}
 apscheduler = "^3.11.0"
 fastapi = "^0.115.8"
 uvicorn = "^0.34.0"
+sqlalchemy-orm = "^1.2.10"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
+ruff = "^0.9.7"
 
 [tool.mypy]
 disallow_any_unimported = true
