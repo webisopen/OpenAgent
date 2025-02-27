@@ -37,13 +37,9 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
     servers=[
         {
-            "url": "http://localhost:8000",
+            "url": "http://localhost:8888",
             "description": "Local",
-        },
-        {
-            "url": "https://openagent-oa-141022883942.us-central1.run.app",
-            "description": "Development",
-        },
+        }
     ],
 )
 

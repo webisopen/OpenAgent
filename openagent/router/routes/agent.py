@@ -16,11 +16,13 @@ from openagent.router.routes.models.response import (
     ResponseModel,
 )
 from openagent.tools.tool_config import ToolConfig
+from openagent.agent.yaml_generator import generate_twitter_agent_yaml
 
 auth_handler = Auth()
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
+# Load environment variables at module initialization
 load_dotenv()
 
 
@@ -104,6 +106,22 @@ def create_agent(
         db.add(agent)
         db.commit()
         db.refresh(agent)
+
+        # Generate YAML file for Twitter agents
+        try:
+            # Check if it's a Twitter agent (has Twitter tool)
+            is_twitter_agent = any(
+                "twitter" in tool_config.name.lower()
+                for tool_config in agent.tool_configs_list
+            )
+
+            if is_twitter_agent:
+                # Generate and save YAML file to current directory
+                yaml_path = generate_twitter_agent_yaml(agent)
+                print(f"Generated agent YAML file: {yaml_path}")
+        except Exception as yaml_error:
+            # Log the error but don't fail the agent creation
+            print(f"Failed to generate YAML file: {yaml_error}")
 
         return ResponseModel(
             code=status.HTTP_200_OK,
