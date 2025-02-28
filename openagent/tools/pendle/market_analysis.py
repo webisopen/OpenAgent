@@ -91,7 +91,7 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         """Initialize database connection based on configuration"""
         # Set default configuration if not provided
         db_type = "sqlite"
-        db_url = None
+        db_url = 'sqlite:///' + os.path.join(os.getcwd(), "storage", f"{self.name}.db")
 
         if config:
             db_type = config.type
@@ -101,7 +101,6 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         engine = create_engine(
             db_type=db_type,
             db_url=db_url,
-            db_name=self.name
         )
 
         # Create tables and initialize session factory
@@ -266,10 +265,10 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
 
         # Combine all relevant symbols
         relevant_symbols = (
-            liquidity_increase_top_symbols
-            | new_market_liquidity_increase_symbols
-            | apy_increase_symbols
-            | new_market_apy_increase_symbols
+                liquidity_increase_top_symbols
+                | new_market_liquidity_increase_symbols
+                | apy_increase_symbols
+                | new_market_apy_increase_symbols
         )
 
         # Filter markets to include only those in the relevant symbols set

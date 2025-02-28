@@ -14,7 +14,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from openagent.agent.config import ModelConfig
-from openagent.core.database import sqlite
+from openagent.core.database.engine import create_engine
 from openagent.core.tool import Tool
 from openagent.core.utils.fetch_json import fetch_json
 from openagent.core.utils.json_equal import json_equal
@@ -47,8 +47,8 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
         self.core_model = core_model
         self.tool_model = None
         self.tool_prompt = None
-        db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
-        self.engine = sqlite.create_engine(db_path)
+        db_path = 'sqlite:///' + os.path.join(os.getcwd(), "storage", f"{self.name}.db")
+        self.engine = create_engine("sqlite", db_path)
         Base.metadata.create_all(self.engine)
         session = sessionmaker(bind=self.engine)
         self.session = session()

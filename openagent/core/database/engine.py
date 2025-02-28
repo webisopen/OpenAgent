@@ -1,38 +1,22 @@
 import os
-from typing import Optional
+from typing import Optional, Literal
 from urllib.parse import urlparse
 
 from sqlalchemy import create_engine as sa_create_engine, text as sa_text, Engine
 from loguru import logger
 
 
-def _create_sqlite_engine(db_url: Optional[str] = None, db_name: Optional[str] = None, storage_dir: str = "storage") -> Engine:
+def _create_sqlite_engine(db_url: str) -> Engine:
     """
-    Create a SQLite engine from a URL or create a default URL if not provided.
+    Create a SQLite engine from a URL.
     
     Args:
         db_url: SQLite database URL (sqlite:///path/to/file.db)
-        db_name: Database name to use if db_url is not provided
-        storage_dir: Directory to store SQLite databases (default: 'storage')
         
     Returns:
         SQLAlchemy engine instance
-        
-    Raises:
-        ValueError: If neither db_url nor db_name is provided
     """
-    if db_url:
-        return sa_create_engine(db_url)
-    
-    if not db_name:
-        raise ValueError("Either db_url or db_name must be provided for SQLite")
-    
-    # Create default SQLite path
-    db_path = os.path.join(os.getcwd(), storage_dir, f"{db_name}.db")
-    if not os.path.exists(os.path.dirname(db_path)):
-        os.makedirs(os.path.dirname(db_path))
-    
-    return sa_create_engine(f"sqlite:///{db_path}")
+    return sa_create_engine(db_url)
 
 
 def _ensure_postgres_database_exists(db_url: str) -> None:
@@ -86,7 +70,7 @@ def _create_postgres_engine(db_url: str) -> Engine:
     return sa_create_engine(db_url)
 
 
-def create_engine(db_type: str = "sqlite", db_url: Optional[str] = None, db_name: Optional[str] = None, storage_dir: str = "storage") -> Engine:
+def create_engine(db_type: Literal["sqlite", "postgres"] = "sqlite", db_url: str = None) -> Engine:
     """
     Create a database engine based on the provided configuration.
     
@@ -94,20 +78,19 @@ def create_engine(db_type: str = "sqlite", db_url: Optional[str] = None, db_name
         db_type: Type of database ('sqlite' or 'postgres')
         db_url: Database URL. For postgres: postgresql://user:password@host:port/database, 
                 for sqlite: sqlite:///path/to/file.db
-        db_name: Database name to use if db_url is not provided (SQLite only)
-        storage_dir: Directory to store SQLite databases (default: 'storage')
             
     Returns:
         SQLAlchemy engine instance
     
     Raises:
-        ValueError: If an unsupported database type is specified or if required parameters are missing
+        ValueError: If an unsupported database type is specified or if db_url is missing
     """
+    if not db_url:
+        raise ValueError("Database URL is required")
+        
     if db_type == "sqlite":
-        return _create_sqlite_engine(db_url, db_name, storage_dir)
+        return _create_sqlite_engine(db_url)
     elif db_type == "postgres":
-        if not db_url:
-            raise ValueError("Database URL is required for PostgreSQL")
         return _create_postgres_engine(db_url)
     else:
         raise ValueError(f"Unsupported database type: {db_type}") 
