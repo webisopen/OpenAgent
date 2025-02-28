@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 import click
 import uvicorn
 
@@ -13,6 +14,21 @@ load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 def shutdown():
     click.echo("\nShutting down...")
     os._exit(0)
+
+
+if sys.platform == "win32":
+    import threading
+    import time
+    import msvcrt
+
+    def check_exit_windows():
+        while True:
+            if msvcrt.kbhit() and msvcrt.getch().decode("utf-8").lower() == "q":
+                shutdown()
+            time.sleep(1)
+
+    # Start the exit checker thread
+    threading.Thread(target=check_exit_windows, daemon=True).start()
 
 
 @click.group()
