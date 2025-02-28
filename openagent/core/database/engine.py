@@ -1,5 +1,3 @@
-import os
-from typing import Optional, Literal
 from urllib.parse import urlparse
 
 from sqlalchemy import create_engine as sa_create_engine, text as sa_text, Engine
@@ -9,10 +7,10 @@ from loguru import logger
 def _create_sqlite_engine(db_url: str) -> Engine:
     """
     Create a SQLite engine from a URL.
-    
+
     Args:
         db_url: SQLite database URL (sqlite:///path/to/file.db)
-        
+
     Returns:
         SQLAlchemy engine instance
     """
@@ -23,7 +21,7 @@ def _ensure_postgres_database_exists(db_url: str) -> None:
     """
     Ensure that the PostgreSQL database specified in the URL exists.
     Creates the database if it doesn't exist.
-    
+
     Args:
         db_url: PostgreSQL database URL
     """
@@ -39,10 +37,10 @@ def _ensure_postgres_database_exists(db_url: str) -> None:
     try:
         # Check if database exists
         result = default_conn.execute(
-            sa_text(f"SELECT 1 FROM pg_database WHERE datname = :db_name"), 
-            {"db_name": pg_db_name}
+            sa_text("SELECT 1 FROM pg_database WHERE datname = :db_name"),
+            {"db_name": pg_db_name},
         )
-        
+
         if not result.scalar():
             # Create database if it doesn't exist
             default_conn.execute(sa_text("commit"))
@@ -59,10 +57,10 @@ def _create_postgres_engine(db_url: str) -> Engine:
     """
     Create a PostgreSQL engine from a URL.
     Ensures the database exists before creating the engine.
-    
+
     Args:
         db_url: PostgreSQL database URL
-        
+
     Returns:
         SQLAlchemy engine instance
     """
@@ -74,25 +72,27 @@ def create_engine(db_url: str) -> Engine:
     """
     Create a database engine based on the provided configuration.
     Database type is automatically detected from the URL.
-    
+
     Args:
-        db_url: Database URL. For postgres: postgresql://user:password@host:port/database, 
+        db_url: Database URL. For postgres: postgresql://user:password@host:port/database,
                 for sqlite: sqlite:///path/to/file.db
-            
+
     Returns:
         SQLAlchemy engine instance
-    
+
     Raises:
         ValueError: If an unsupported database type is detected or if db_url is missing
     """
     if not db_url:
         raise ValueError("Database URL is required")
-    
+
     # Auto-detect database type from URL
-    if db_url.startswith('sqlite:'):
+    if db_url.startswith("sqlite:"):
         return _create_sqlite_engine(db_url)
-    elif db_url.startswith('postgresql:'):
+    elif db_url.startswith("postgresql:"):
         return _create_postgres_engine(db_url)
     else:
-        raise ValueError(f"Could not detect database type from URL: {db_url}. "
-                        "Supported URL formats: 'sqlite:///path/to/file.db' or 'postgresql://user:password@host:port/database'") 
+        raise ValueError(
+            f"Could not detect database type from URL: {db_url}. "
+            "Supported URL formats: 'sqlite:///path/to/file.db' or 'postgresql://user:password@host:port/database'"
+        )

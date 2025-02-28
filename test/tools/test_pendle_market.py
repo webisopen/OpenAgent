@@ -1,20 +1,15 @@
 import asyncio
 
-from sqlalchemy.testing.config import db_url
 
 from openagent.agent.config import ModelConfig
-from openagent.tools.pendle.market_analysis import PendleMarketTool, PendleMarketConfig, DatabaseConfig
+from openagent.tools.pendle.market_analysis import PendleMarketTool, PendleMarketConfig
 
 
 async def test_pendle_market():
     # Initialize configuration
     config = PendleMarketConfig(
-        model=ModelConfig(
-            provider="openai",
-            name="gpt-4",
-            temperature=0.7
-        ),
-        db_url='sqlite:///storage/test_pendle_market.db'
+        model=ModelConfig(provider="openai", name="gpt-4", temperature=0.7),
+        db_url="sqlite:///storage/test_pendle_market.db",
     )
 
     # Initialize the tool
@@ -30,12 +25,8 @@ async def test_pendle_market():
 async def test_pendle_market_postgres():
     # Initialize configuration with PostgreSQL
     config = PendleMarketConfig(
-        model=ModelConfig(
-            provider="openai",
-            name="gpt-4",
-            temperature=0.7
-        ),
-        db_url='postgresql://postgres:password@localhost:5434/pendle_market_test'
+        model=ModelConfig(provider="openai", name="gpt-4", temperature=0.7),
+        db_url="postgresql://postgres:password@localhost:5434/pendle_market_test",
     )
 
     # Initialize the tool

@@ -5,12 +5,11 @@ from dataclasses import dataclass, asdict
 from heapq import nlargest
 from typing import Optional, Literal
 
-import httpx
 from pydantic import BaseModel, Field
 from textwrap import dedent
 from loguru import logger
 
-from sqlalchemy import Column, Integer, String, DateTime, text as sa_text
+from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from langchain.prompts import PromptTemplate
@@ -54,13 +53,13 @@ class PendleMarket(Base):
 
 class DatabaseConfig(BaseModel):
     """Database configuration for the tool"""
+
     type: Literal["sqlite", "postgres"] = Field(
-        default="sqlite",
-        description="Type of database to use"
+        default="sqlite", description="Type of database to use"
     )
     url: Optional[str] = Field(
         default=None,
-        description="Database URL. For postgres: postgresql://user:password@host:port/database, for sqlite: sqlite:///path/to/file.db"
+        description="Database URL. For postgres: postgresql://user:password@host:port/database, for sqlite: sqlite:///path/to/file.db",
     )
 
 
@@ -73,7 +72,7 @@ class PendleMarketConfig(BaseModel):
     )
     db_url: Optional[str] = Field(
         default=None,
-        description="Database URL. For postgres: postgresql://user:password@host:port/database, for sqlite: sqlite:///path/to/file.db"
+        description="Database URL. For postgres: postgresql://user:password@host:port/database, for sqlite: sqlite:///path/to/file.db",
     )
 
 
@@ -91,7 +90,9 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         """Initialize database connection based on configuration"""
         # Set default configuration if not provided
         if not db_url:
-            db_url = 'sqlite:///' + os.path.join(os.getcwd(), "storage", f"{self.name}.db")
+            db_url = "sqlite:///" + os.path.join(
+                os.getcwd(), "storage", f"{self.name}.db"
+            )
 
         # Create engine using the database module's create_engine function
         engine = create_engine(db_url)
@@ -233,16 +234,22 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         new_markets = [market for market in markets if market.isNewPool]
         existing_markets = [market for market in markets if not market.isNewPool]
 
-        def get_top_markets(markets: list[PendleMarketData], key_attr: str, n: int = 3) -> list[PendleMarketData]:
+        def get_top_markets(
+            markets: list[PendleMarketData], key_attr: str, n: int = 3
+        ) -> list[PendleMarketData]:
             """Helper function to get top n markets based on a specific attribute"""
-            filtered_markets = [m for m in markets if m and getattr(m, key_attr) is not None]
+            filtered_markets = [
+                m for m in markets if m and getattr(m, key_attr) is not None
+            ]
             return nlargest(n, filtered_markets, key=lambda x: getattr(x, key_attr))
 
         # Get top markets for both liquidity and APY
-        liquidity_increase = get_top_markets(existing_markets, 'liquidityChange24h')
-        new_market_liquidity_increase = get_top_markets(new_markets, 'liquidityChange24h')
-        apy_increase = get_top_markets(existing_markets, 'impliedApyChange24h')
-        new_market_apy_increase = get_top_markets(new_markets, 'impliedApyChange24h')
+        liquidity_increase = get_top_markets(existing_markets, "liquidityChange24h")
+        new_market_liquidity_increase = get_top_markets(
+            new_markets, "liquidityChange24h"
+        )
+        apy_increase = get_top_markets(existing_markets, "impliedApyChange24h")
+        new_market_apy_increase = get_top_markets(new_markets, "impliedApyChange24h")
 
         # Extract symbols from sorted markets in one step
         liquidity_increase_top_symbols = {
@@ -258,10 +265,10 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
 
         # Combine all relevant symbols
         relevant_symbols = (
-                liquidity_increase_top_symbols
-                | new_market_liquidity_increase_symbols
-                | apy_increase_symbols
-                | new_market_apy_increase_symbols
+            liquidity_increase_top_symbols
+            | new_market_liquidity_increase_symbols
+            | apy_increase_symbols
+            | new_market_apy_increase_symbols
         )
 
         # Filter markets to include only those in the relevant symbols set

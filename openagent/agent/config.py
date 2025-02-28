@@ -35,12 +35,16 @@ class SchedulerConfig(BaseModel):
 
 
 class TaskConfig(BaseModel):
-    interval: Optional[int] = Field(default=None, description="Interval in seconds between task executions")
+    interval: Optional[int] = Field(
+        default=None, description="Interval in seconds between task executions"
+    )
     delay_variation: Optional[int] = Field(
         default=0, description="Maximum random delay in seconds to add to the interval"
     )
     query: str
-    cron: Optional[str] = Field(default=None, description="Cron expression for scheduling tasks")
+    cron: Optional[str] = Field(
+        default=None, description="Cron expression for scheduling tasks"
+    )
     schedule: SchedulerConfig = Field(
         default_factory=lambda: SchedulerConfig(type="local"),
         description="Scheduler configuration for this task",

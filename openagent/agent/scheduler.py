@@ -33,6 +33,7 @@ class SchedulerManager:
             if task_config.schedule.type == "queue":
                 self._init_celery_task(task_id, task_config, task_runner)
             else:
+
                 async def task_wrapper(query, delay_variation):
                     if delay_variation > 0:
                         delay = random.uniform(0, delay_variation)
@@ -48,7 +49,9 @@ class SchedulerManager:
                         id=task_id,
                         name=f"Task_{task_id}",
                     )
-                    logger.info(f"Scheduled cron task '{task_id}' with cron expression: {task_config.cron}")
+                    logger.info(
+                        f"Scheduled cron task '{task_id}' with cron expression: {task_config.cron}"
+                    )
                 else:
                     self.scheduler.add_job(
                         func=task_wrapper,
