@@ -17,11 +17,11 @@ from openagent.core.utils.fetch_json import fetch_json
 @dataclass
 class CompoundMarketData:
     address: str
-    borrowAPR: float
-    borrowAPRChange24h: float
+    borrow_apr: float
+    borrow_apr_change_24h: float
     chain_id: int
-    supplyAPR: float
-    supplyAPRChange24h: float
+    supply_apr: float
+    supply_apr_change_24h: float
 
 
 class CompoundMarketConfig(BaseModel):
@@ -74,10 +74,10 @@ class CompoundMarketTool(Tool[CompoundMarketConfig]):
 
             ### Data Structure
             - Market object with:
-              - `borrowAPR`: Current borrow APR
-              - `supplyAPR`: Current supply APR
-              - `borrowAPRChange24h`: 24h borrow APR change
-              - `supplyAPRChange24h`: 24h supply APR change
+              - `borrow_apr`: Current borrow APR
+              - `supply_apr`: Current supply APR
+              - `borrow_apr_change_24h`: 24h borrow APR change
+              - `supply_aprChange24h`: 24h supply APR change
 
             ### Task
             Analyze the market data and provide:
@@ -113,14 +113,13 @@ class CompoundMarketTool(Tool[CompoundMarketConfig]):
             logger.info(f"{self.name} tool response: {response.strip()}.")
 
             return response.strip()
-
         except Exception as e:
             logger.error(f"Error in {self.name} tool: {e}")
             return f"Error in {self.name} tool: {e}"
 
     @staticmethod
     async def _fetch_compound_market_data(
-        chain_ids: List[int],
+            chain_ids: List[int],
     ) -> list[CompoundMarketData]:
         results = await fetch_json(
             url="https://v3-api.compound.finance/market/all-networks/all-contracts/summary"
@@ -179,12 +178,14 @@ class CompoundMarketTool(Tool[CompoundMarketConfig]):
             market_data.append(
                 CompoundMarketData(
                     address=market_address,
-                    borrowAPR=current_borrow_apr,
-                    borrowAPRChange24h=borrow_apr_change_24h,
+                    borrow_apr=current_borrow_apr,
+                    borrow_apr_change_24h=borrow_apr_change_24h,
                     chain_id=market["chain_id"],
-                    supplyAPR=current_supply_apr,
-                    supplyAPRChange24h=supply_apr_change_24h,
+                    supply_apr=current_supply_apr,
+                    supply_apr_change_24h=supply_apr_change_24h,
                 )
             )
 
-        return market_data
+        # Sort market data by supply APR change (descending) and get top 3
+        market_data.sort(key=lambda x: abs(x.supply_apr_change_24h), reverse=True)
+        return market_data[:3]
