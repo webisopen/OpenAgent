@@ -17,9 +17,10 @@ from openagent.core.utils.fetch_json import fetch_json
 @dataclass
 class CompoundMarketData:
     address: str
+    symbol: str
     borrow_apr: float
     borrow_apr_change_24h: float
-    chain_id: int
+    chain: str
     supply_apr: float
     supply_apr_change_24h: float
 
@@ -83,7 +84,7 @@ class CompoundMarketTool(Tool[CompoundMarketConfig]):
             Analyze the market data and provide:
             - Must be concise with clear statements about APR changes
             - Include both supply and borrow APR changes
-            - Include list of supported collateral assets
+            - Include the symbol of the market, if the symbol is not available, use the address
             - Do not provide personal opinions or financial advice\
             """
             ),
@@ -175,12 +176,21 @@ class CompoundMarketTool(Tool[CompoundMarketConfig]):
             borrow_apr_change_24h = current_borrow_apr - yesterday_borrow_apr
             supply_apr_change_24h = current_supply_apr - yesterday_supply_apr
 
+            # Address to symbol mapping
+            address_to_symbol = {
+                "0xd98Be00b5D27fc98112BdE293e487f8D4cA57d07": "USDT",
+                "0xA5EDBDD9646f8dFF606d7448e414884C7d905dCA": "USDC.e",
+                "0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf": "USDC",
+                "0x6f7D514bbD4aFf3BcD1140B7344b32f063dEe486": "WETH",
+            }
+
             market_data.append(
                 CompoundMarketData(
                     address=market_address,
+                    symbol=address_to_symbol.get(market_address, ""),
                     borrow_apr=current_borrow_apr,
                     borrow_apr_change_24h=borrow_apr_change_24h,
-                    chain_id=market["chain_id"],
+                    chain_id=CHAIN_ID_TO_NETWORK.get(market["chain_id"]),
                     supply_apr=current_supply_apr,
                     supply_apr_change_24h=supply_apr_change_24h,
                 )
