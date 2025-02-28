@@ -71,9 +71,9 @@ class PendleMarketConfig(BaseModel):
         default=None,
         description="Model configuration for LLM. If not provided, will use agent's core model",
     )
-    database: Optional[DatabaseConfig] = Field(
+    db_url: Optional[str] = Field(
         default=None,
-        description="Database configuration. If not provided, will use SQLite with default path",
+        description="Database URL. For postgres: postgresql://user:password@host:port/database, for sqlite: sqlite:///path/to/file.db"
     )
 
 
@@ -87,21 +87,14 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         self.tool_prompt = None
         self.DBSession = None
 
-    def _init_database(self, config: Optional[DatabaseConfig] = None) -> None:
+    def _init_database(self, db_url: Optional[str]) -> None:
         """Initialize database connection based on configuration"""
         # Set default configuration if not provided
-        db_type = "sqlite"
-        db_url = 'sqlite:///' + os.path.join(os.getcwd(), "storage", f"{self.name}.db")
-
-        if config:
-            db_type = config.type
-            db_url = config.url
+        if not db_url:
+            db_url = 'sqlite:///' + os.path.join(os.getcwd(), "storage", f"{self.name}.db")
 
         # Create engine using the database module's create_engine function
-        engine = create_engine(
-            db_type=db_type,
-            db_url=db_url,
-        )
+        engine = create_engine(db_url)
 
         # Create tables and initialize session factory
         Base.metadata.create_all(engine)
@@ -119,7 +112,7 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         """Setup the analysis tool with model and prompt"""
 
         # Initialize database
-        self._init_database(config.database)
+        self._init_database(config.db_url)
 
         # Initialize the model
         model_config = config.model if config.model else self.core_model

@@ -70,12 +70,12 @@ def _create_postgres_engine(db_url: str) -> Engine:
     return sa_create_engine(db_url)
 
 
-def create_engine(db_type: Literal["sqlite", "postgres"] = "sqlite", db_url: str = None) -> Engine:
+def create_engine(db_url: str) -> Engine:
     """
     Create a database engine based on the provided configuration.
+    Database type is automatically detected from the URL.
     
     Args:
-        db_type: Type of database ('sqlite' or 'postgres')
         db_url: Database URL. For postgres: postgresql://user:password@host:port/database, 
                 for sqlite: sqlite:///path/to/file.db
             
@@ -83,14 +83,16 @@ def create_engine(db_type: Literal["sqlite", "postgres"] = "sqlite", db_url: str
         SQLAlchemy engine instance
     
     Raises:
-        ValueError: If an unsupported database type is specified or if db_url is missing
+        ValueError: If an unsupported database type is detected or if db_url is missing
     """
     if not db_url:
         raise ValueError("Database URL is required")
-        
-    if db_type == "sqlite":
+    
+    # Auto-detect database type from URL
+    if db_url.startswith('sqlite:'):
         return _create_sqlite_engine(db_url)
-    elif db_type == "postgres":
+    elif db_url.startswith('postgresql:'):
         return _create_postgres_engine(db_url)
     else:
-        raise ValueError(f"Unsupported database type: {db_type}") 
+        raise ValueError(f"Could not detect database type from URL: {db_url}. "
+                        "Supported URL formats: 'sqlite:///path/to/file.db' or 'postgresql://user:password@host:port/database'") 

@@ -80,8 +80,8 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
         self.retry_delay = 1
 
         # Initialize database
-        db_path = 'sqlite:///'+os.path.join(os.getcwd(), "storage", f"{self.name}.db")
-        self.engine = create_engine('sqlite',db_path)
+        db_url = 'sqlite:///' + os.path.join(os.getcwd(), "storage", f"{self.name}.db")
+        self.engine = create_engine(db_url)
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
@@ -99,7 +99,7 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
         self.config = config
 
     async def _fetch_single_handle(
-        self, client: httpx.AsyncClient, handle: str
+            self, client: httpx.AsyncClient, handle: str
     ) -> List[dict]:
         """Fetch tweets for a single handle with retry logic"""
         params = {"limit": self.config.limit if self.config else 50}

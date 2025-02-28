@@ -47,8 +47,8 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
         self.core_model = core_model
         self.tool_model = None
         self.tool_prompt = None
-        db_path = 'sqlite:///' + os.path.join(os.getcwd(), "storage", f"{self.name}.db")
-        self.engine = create_engine("sqlite", db_path)
+        db_url = 'sqlite:///' + os.path.join(os.getcwd(), "storage", f"{self.name}.db")
+        self.engine = create_engine(db_url)
         Base.metadata.create_all(self.engine)
         session = sessionmaker(bind=self.engine)
         self.session = session()
