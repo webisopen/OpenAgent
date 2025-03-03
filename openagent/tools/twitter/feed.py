@@ -10,7 +10,7 @@ import asyncio
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from openagent.core.database import sqlite
+from openagent.core.database.engine import create_engine
 from openagent.core.tool import Tool
 
 Base = declarative_base()
@@ -80,8 +80,8 @@ class GetTwitterFeed(Tool[TwitterFeedConfig]):
         self.retry_delay = 1
 
         # Initialize database
-        db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
-        self.engine = sqlite.create_engine(db_path)
+        db_url = "sqlite:///" + os.path.join(os.getcwd(), "storage", f"{self.name}.db")
+        self.engine = create_engine(db_url)
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()

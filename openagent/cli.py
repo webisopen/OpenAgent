@@ -87,7 +87,7 @@ def run_server(host, port, agent=None):
         )
         check_exit_func = check_exit_unix
 
-    # Create FastAPI config using the refactored app from api/app.py
+    # Create FastAPI config
     config = uvicorn.Config(app, host=host, port=port, loop=loop)
     server = uvicorn.Server(config)
 

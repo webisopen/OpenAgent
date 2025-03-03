@@ -3,9 +3,8 @@ import os
 from datetime import datetime, UTC
 from dataclasses import dataclass, asdict
 from heapq import nlargest
-from typing import Optional
+from typing import Optional, Literal
 
-import httpx
 from pydantic import BaseModel, Field
 from textwrap import dedent
 from loguru import logger
@@ -17,8 +16,10 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain.chat_models import init_chat_model
 from openagent.agent.config import ModelConfig
-from openagent.core.database import sqlite
+from openagent.core.constants.chain_ids import CHAIN_ID_TO_NETWORK
+from openagent.core.database.engine import create_engine
 from openagent.core.tool import Tool
+from openagent.core.utils.fetch_json import fetch_json
 
 Base = declarative_base()
 
@@ -28,19 +29,22 @@ class PendleMarketData:
     """Data of a Pendle market, required for analysis"""
 
     symbol: str
+    chain: str
+    expiry: str
     protocol: str
-    isNewPool: bool
-    liquidityChange24h: float
-    impliedApyChange24h: float
+    is_new_pool: bool
+    liquidity_change_24h: float
+    fixed_apy: float
+    fixed_apy_change_24h: float
 
 
 @dataclass
 class PendleMarketSnapshot:
     markets: list[PendleMarketData]
-    liquidityIncreaseList: list[str]
-    newMarketLiquidityIncreaseList: list[str]
-    apyIncreaseList: list[str]
-    newMarketApyIncreaseList: list[str]
+    liquidity_increase_list: list[str]
+    new_market_liquidity_increaseList: list[str]
+    apy_increase_list: list[str]
+    new_market_apy_increase_list: list[str]
 
 
 class PendleMarket(Base):
@@ -51,12 +55,28 @@ class PendleMarket(Base):
     created_at = Column(DateTime, default=datetime.now(UTC))
 
 
+class DatabaseConfig(BaseModel):
+    """Database configuration for the tool"""
+
+    type: Literal["sqlite", "postgres"] = Field(
+        default="sqlite", description="Type of database to use"
+    )
+    url: Optional[str] = Field(
+        default=None,
+        description="Database URL. For postgres: postgresql://user:password@host:port/database, for sqlite: sqlite:///path/to/file.db",
+    )
+
+
 class PendleMarketConfig(BaseModel):
     """Configuration for data analysis tool"""
 
     model: Optional[ModelConfig] = Field(
         default=None,
         description="Model configuration for LLM. If not provided, will use agent's core model",
+    )
+    db_url: Optional[str] = Field(
+        default=None,
+        description="Database URL. For postgres: postgresql://user:password@host:port/database, for sqlite: sqlite:///path/to/file.db",
     )
 
 
@@ -68,12 +88,22 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         self.core_model = core_model
         self.tool_model = None
         self.tool_prompt = None
-        # Construct the path to the SQLite database file
-        db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
-        self.engine = sqlite.create_engine(db_path)
-        Base.metadata.create_all(self.engine)
-        session = sessionmaker(bind=self.engine)
-        self.session = session()
+        self.DBSession = None
+
+    def _init_database(self, db_url: Optional[str]) -> None:
+        """Initialize database connection based on configuration"""
+        # Set default configuration if not provided
+        if not db_url:
+            db_url = "sqlite:///" + os.path.join(
+                os.getcwd(), "storage", f"{self.name}.db"
+            )
+
+        # Create engine using the database module's create_engine function
+        engine = create_engine(db_url)
+
+        # Create tables and initialize session factory
+        Base.metadata.create_all(engine)
+        self.DBSession = sessionmaker(bind=engine)
 
     @property
     def name(self) -> str:
@@ -85,6 +115,9 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
 
     async def setup(self, config: PendleMarketConfig) -> None:
         """Setup the analysis tool with model and prompt"""
+
+        # Initialize database
+        self._init_database(config.db_url)
 
         # Initialize the model
         model_config = config.model if config.model else self.core_model
@@ -108,22 +141,26 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
             ### Data Structure
             - Markets: List of market objects with:
               - `symbol`: Name
+              - `chain`: Chain
+              - `expiry`: Expiry date
               - `protocol`: Issuing protocol
-              - `isNewPool`: Boolean (new market)
-              - `liquidityChange24h`: 24h liquidity change
-              - `impliedApyChange24h`: 24h APY change
+              - `is_new_pool`: Boolean (new market)
+              - `liquidity_change_24h`: 24h liquidity change in percentage
+              - `fixed_apy`: Fixed APY in percentage
+              - `fixed_apy_change_24h`: 24h APY change in percentage
 
             - Rankings
-              - `liquidityIncreaseList`: Top 3 by liquidity change
-              - `newMarketLiquidityIncreaseList`: Top 3 new markets by liquidity change
-              - `apyIncreaseList`: Top 3 by APY increase
-              - `newMarketApyIncreaseList`: Top 3 new markets by APY increase
+              - `liquidity_increase_list`: Top 3 by liquidity change
+              - `new_market_liquidity_increaseList`: Top 3 new markets by liquidity change
+              - `apy_increase_list`: Top 3 by APY increase
+              - `new_market_apy_increase_list`: Top 3 new markets by APY increase
 
             ### Task
             For each market in the rankings, provide an analysis:
-            - Must be concise with 1 sentence per market, must include `symbol`, `protocol`, `liquidityChange24h`, `impliedApyChange24h`
+            - Must be concise with 1 sentence per market, must include `symbol`, `protocol`, `chain`, `expiry`, `liquidity_change_24h`, `fixed_apy`, `fixed_apy_change_24h`
             - For new markets: add "New Pool"
             - Do not provide personal opinions or financial advice\
+            Example: `symbol` (`protocol`) on `chain` until `expiry`, has `liquidity_change_24h` liquidity change and `fixed_apy_change_24h` APY change, now fixed APY is `fixed_apy`.\
             """
             ),
             input_variables=["data"],
@@ -143,19 +180,19 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         try:
             # Fetch the latest data from Pendle API
             latest_data = await self._fetch_pendle_market_data()
-
-            # Save new data to database
-            self.session.add(latest_data)
-            self.session.commit()
-
             chain = self.tool_prompt | self.tool_model | StrOutputParser()
 
-            # Run analysis chain
+            # Run analysis chain using the stored data
             response = await chain.ainvoke(
                 {
                     "data": latest_data.data,
                 }
             )
+
+            # Store the data before adding to session
+            with self.DBSession() as session:
+                session.add(latest_data)
+                session.commit()
 
             logger.info(f"{self.name} tool response: {response.strip()}.")
             return response.strip()
@@ -166,65 +203,73 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
             return error_msg
 
     async def _fetch_pendle_market_data(self) -> PendleMarket:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://api-v2.pendle.finance/bff/v3/markets/all?isActive=true"
-            )
-            if response.status_code != 200:
-                raise Exception(
-                    f"API request failed with status {response.status_code}"
-                )
+        # Get Pendle market data from API
+        result = await fetch_json(
+            url="https://api-v2.pendle.finance/bff/v3/markets/all?isActive=true"
+        )
 
-            # Get Pendle market data from API
-            results = response.json()
+        # Process the data
+        snapshot = self._process_market_data(result)
 
-            # Process the data
-            snapshot = self._process_market_data(results)
-
-            return PendleMarket(
-                data=json.dumps(asdict(snapshot)),
-                created_at=datetime.now(UTC),
-            )
+        return PendleMarket(
+            data=json.dumps(asdict(snapshot)),
+            created_at=datetime.now(UTC),
+        )
 
     @staticmethod
     def _process_market_data(results: dict) -> PendleMarketSnapshot:
         """Process raw market data into a structured snapshot"""
 
+        def format_timestamp(timestamp: int) -> str:
+            return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
+
+        def to_percentage(value: float) -> float:
+            return value * 100 if value is not None else 0.0
+
         # Create market list
         markets = [
             PendleMarketData(
                 symbol=symbol,
-                isNewPool=is_new,
+                chain=CHAIN_ID_TO_NETWORK.get(chain_id, "chain"),
+                expiry=format_timestamp(expiry),
+                is_new_pool=is_new,
                 protocol=protocol,
-                liquidityChange24h=liquidity,
-                impliedApyChange24h=apy,
+                liquidity_change_24h=to_percentage(liquidity_change_24h),
+                fixed_apy=to_percentage(fixed_apy),
+                fixed_apy_change_24h=to_percentage(fixed_apy_change_24h),
             )
-            for symbol, is_new, protocol, liquidity, apy in zip(
+            for symbol, chain_id, expiry, is_new, protocol, liquidity_change_24h, fixed_apy, fixed_apy_change_24h in zip(
                 results["symbolList"],
+                results["chainIdList"],
+                results["expiryList"],
                 results["isNewList"],
                 results["protocolList"],
                 results["liquidityChange24hList"],
+                results["impliedApyList"],
                 results["impliedApyChange24hList"],
             )
         ]
 
         # Split the markets into new and existing
-        new_markets = [market for market in markets if market.isNewPool]
-        existing_markets = [market for market in markets if not market.isNewPool]
+        new_markets = [market for market in markets if market.is_new_pool]
+        existing_markets = [market for market in markets if not market.is_new_pool]
 
-        # Sort markets by liquidity and APY increases
-        liquidity_increase = nlargest(
-            3, existing_markets, key=lambda x: x.liquidityChange24h
+        def get_top_markets(
+            markets: list[PendleMarketData], key_attr: str, n: int = 3
+        ) -> list[PendleMarketData]:
+            """Helper function to get top n markets based on a specific attribute"""
+            filtered_markets = [
+                m for m in markets if m and getattr(m, key_attr) is not None
+            ]
+            return nlargest(n, filtered_markets, key=lambda x: getattr(x, key_attr))
+
+        # Get top markets for both liquidity and APY
+        liquidity_increase = get_top_markets(existing_markets, "liquidity_change_24h")
+        new_market_liquidity_increase = get_top_markets(
+            new_markets, "liquidity_change_24h"
         )
-        new_market_liquidity_increase = nlargest(
-            3, new_markets, key=lambda x: x.liquidityChange24h
-        )
-        apy_increase = nlargest(
-            3, existing_markets, key=lambda x: x.impliedApyChange24h
-        )
-        new_market_apy_increase = nlargest(
-            3, new_markets, key=lambda x: x.impliedApyChange24h
-        )
+        apy_increase = get_top_markets(existing_markets, "fixed_apy_change_24h")
+        new_market_apy_increase = get_top_markets(new_markets, "fixed_apy_change_24h")
 
         # Extract symbols from sorted markets in one step
         liquidity_increase_top_symbols = {
@@ -253,8 +298,10 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
 
         return PendleMarketSnapshot(
             markets=filtered_markets,
-            liquidityIncreaseList=list(liquidity_increase_top_symbols),
-            newMarketLiquidityIncreaseList=list(new_market_liquidity_increase_symbols),
-            apyIncreaseList=list(apy_increase_symbols),
-            newMarketApyIncreaseList=list(new_market_apy_increase_symbols),
+            liquidity_increase_list=list(liquidity_increase_top_symbols),
+            new_market_liquidity_increaseList=list(
+                new_market_liquidity_increase_symbols
+            ),
+            apy_increase_list=list(apy_increase_symbols),
+            new_market_apy_increase_list=list(new_market_apy_increase_symbols),
         )

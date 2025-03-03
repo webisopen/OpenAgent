@@ -3,7 +3,6 @@ from datetime import datetime, UTC
 from textwrap import dedent
 from typing import Optional
 
-import httpx
 from langchain.chat_models import init_chat_model
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -14,8 +13,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from openagent.agent.config import ModelConfig
-from openagent.core.database import sqlite
+from openagent.core.database.engine import create_engine
 from openagent.core.tool import Tool
+from openagent.core.utils.fetch_json import fetch_json
 from openagent.core.utils.json_equal import json_equal
 
 Base = declarative_base()
@@ -46,8 +46,8 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
         self.core_model = core_model
         self.tool_model = None
         self.tool_prompt = None
-        db_path = os.path.join(os.getcwd(), "storage", f"{self.name}.db")
-        self.engine = sqlite.create_engine(db_path)
+        db_url = "sqlite:///" + os.path.join(os.getcwd(), "storage", f"{self.name}.db")
+        self.engine = create_engine(db_url)
         Base.metadata.create_all(self.engine)
         session = sessionmaker(bind=self.engine)
         self.session = session()
@@ -149,28 +149,23 @@ class PendleVoterApyTool(Tool[PendleVoterApyConfig]):
             return error_msg
 
     async def _fetch_pendle_voter_apy(self) -> PendleVoterApy:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://api-v2.pendle.finance/bff/v1/ve-pendle/pool-voter-apy"
-            )
-            if response.status_code != 200:
-                raise Exception(
-                    f"API request failed with status {response.status_code}"
-                )
+        # Get Pendle voter data from API
+        result = await fetch_json(
+            url="https://api-v2.pendle.finance/bff/v1/ve-pendle/pool-voter-apy"
+        )
 
-            result = response.json()
-            if not result["results"]:
-                raise Exception("API response is empty")
+        if not result["results"]:
+            raise Exception("API response is empty")
 
-            data = self._filter_pendle_voter_apy(result)
+        data = self._filter_pendle_voter_apy(result)
 
-            # Create new snapshot
-            snapshot = PendleVoterApy(
-                data=str(data),
-                created_at=datetime.now(UTC),
-            )
+        # Create new snapshot
+        snapshot = PendleVoterApy(
+            data=str(data),
+            created_at=datetime.now(UTC),
+        )
 
-            return snapshot
+        return snapshot
 
     @staticmethod
     def _filter_pendle_voter_apy(apy_data: dict) -> dict:
