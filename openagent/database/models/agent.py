@@ -9,6 +9,9 @@ from openagent.tools.tool_config import ToolConfig
 class AgentStatus(str, enum.Enum):
     INACTIVE = "inactive"
     ACTIVE = "active"
+    DELETED = "deleted"
+    PAUSED = "paused"
+    PENDING = "pending"
 
     def __str__(self):
         return self.value
