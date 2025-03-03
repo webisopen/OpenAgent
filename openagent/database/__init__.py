@@ -5,6 +5,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 import logging
+from dotenv import load_dotenv
 
 from openagent.database.models.base import Base
 
@@ -24,24 +25,27 @@ class DatabaseManager:
     @classmethod
     def init(cls) -> None:
         """Initialize the database connection and run migrations."""
-        # Create storage directory if it doesn't exist
-        storage_dir = os.path.join(os.getcwd(), "storage")
-        if not os.path.exists(storage_dir):
-            os.makedirs(storage_dir)
+        load_dotenv()
 
-        # Create SQLite database in the storage folder
-        db_path = os.path.join(storage_dir, "openagent.db")
-        database_url = f"sqlite:///{db_path}"
+        # Get database URL from environment variable
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise ValueError("DATABASE_URL environment variable is not set")
 
-        # Create engine
-        cls._engine = create_engine(database_url)
+        # Create engine with PostgreSQL-specific configuration
+        cls._engine = create_engine(
+            database_url,
+            pool_pre_ping=True,  # Enable connection health checks
+            pool_size=5,  # Set connection pool size
+            max_overflow=10,  # Maximum number of connections that can be created beyond pool_size
+        )
 
         # Create session factory
         cls._session_factory = sessionmaker(
             autocommit=False, autoflush=False, bind=cls._engine
         )
 
-        # Try to run migrations first
+        # Try to run migrations
         try:
             alembic_cfg = Config("alembic.ini")
             # Override sqlalchemy.url in the config
@@ -52,7 +56,6 @@ class DatabaseManager:
         except Exception as e:
             logger.warning(f"Error running Alembic migrations: {str(e)}")
             logger.info("Falling back to creating tables directly with SQLAlchemy")
-
             # If migrations fail, create tables directly
             Base.metadata.create_all(cls._engine)
             logger.info("Tables created directly with SQLAlchemy")
@@ -60,13 +63,11 @@ class DatabaseManager:
     @classmethod
     def generate_migration(cls, message="auto generated"):
         """Generate a new migration based on model changes"""
-        storage_dir = os.path.join(os.getcwd(), "storage")
-        if not os.path.exists(storage_dir):
-            os.makedirs(storage_dir)
+        load_dotenv()
 
-        # Create SQLite database in the storage folder
-        db_path = os.path.join(storage_dir, "openagent.db")
-        database_url = f"sqlite:///{db_path}"
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise ValueError("DATABASE_URL environment variable is not set")
 
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", database_url)

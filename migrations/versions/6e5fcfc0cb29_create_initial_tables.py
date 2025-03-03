@@ -60,6 +60,7 @@ def upgrade() -> None:
     op.create_table(
         "agents",
         sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("deployment_id", sa.String(), nullable=True, unique=True),
         sa.Column("name", sa.String(), nullable=False, unique=True),
         sa.Column("description", sa.String()),
         sa.Column("personality", sa.String()),
@@ -72,7 +73,7 @@ def upgrade() -> None:
         sa.Column("twitter", sa.String()),
         sa.Column("telegram", sa.String()),
         sa.Column("website", sa.String()),
-        sa.Column("tool_configs", sa.Text()),  # JSON as text for SQLite
+        sa.Column("tool_configs", sa.JSON()),  # Using native JSON type for PostgreSQL
         sa.Column("status", sa.String(), nullable=False),
         sa.Column("type", sa.String(), nullable=False),
         sa.Column(
