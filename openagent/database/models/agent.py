@@ -49,6 +49,7 @@ class Agent(Base):
         Enum(AgentType, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
     )
+    deployment_id = Column(String, nullable=True, unique=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
         DateTime,
