@@ -100,7 +100,7 @@ def create_agent(
             website=request.website,
             tool_configs=request.get_tool_configs_data(),
             type=request.type,
-            status=AgentStatus.INACTIVE,  # default status
+            status=AgentStatus.PAUSED,  # Set initial status to PAUSED
         )
 
         db.add(agent)
@@ -257,6 +257,9 @@ def update_agent(
         for key, value in update_data.items():
             setattr(agent, key, value)
 
+        # Set status to INACTIVE after update
+        agent.status = AgentStatus.INACTIVE
+
         db.commit()
         db.refresh(agent)
         return ResponseModel(
@@ -301,10 +304,13 @@ def delete_agent(
         )
 
     try:
-        db.delete(agent)
+        # Instead of deleting, update status to DELETED
+        agent.status = AgentStatus.DELETED
         db.commit()
         return ResponseModel(
-            code=status.HTTP_200_OK, data=None, message="Agent deleted successfully"
+            code=status.HTTP_200_OK,
+            data=None,
+            message="Agent marked as deleted successfully",
         )
     except Exception as e:
         db.rollback()
@@ -347,7 +353,7 @@ def run_agent(
             )
 
         # update the agent status to active
-        agent.status = AgentStatus.ACTIVE
+        agent.status = AgentStatus.INACTIVE  # Set to INACTIVE when running
         db.commit()
         db.refresh(agent)
 
@@ -400,7 +406,7 @@ def stop_agent(
             )
 
         # update the agent status to inactive
-        agent.status = AgentStatus.INACTIVE
+        agent.status = AgentStatus.PAUSED  # Set to PAUSED when stopped
         db.commit()
         db.refresh(agent)
 

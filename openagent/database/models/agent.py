@@ -8,6 +8,7 @@ from openagent.tools.tool_config import ToolConfig
 
 class AgentStatus(str, enum.Enum):
     INACTIVE = "inactive"
+    UNHEALTHY = "unhealthy"
     ACTIVE = "active"
     DELETED = "deleted"
     PAUSED = "paused"
