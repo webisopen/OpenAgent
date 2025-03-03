@@ -160,6 +160,7 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
             - Must be concise with 1 sentence per market, must include `symbol`, `protocol`, `chain`, `expiry`, `liquidity_change_24h`, `fixed_apy`, `fixed_apy_change_24h`
             - For new markets: add "New Pool"
             - Do not provide personal opinions or financial advice\
+            Example: `symbol` (`protocol`) on `chain` until `expiry`, has `liquidity_change_24h` liquidity change and `fixed_apy_change_24h` APY change, now fixed APY is `fixed_apy`.\
             """
             ),
             input_variables=["data"],
@@ -220,11 +221,11 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         """Process raw market data into a structured snapshot"""
 
         def format_timestamp(timestamp: int) -> str:
-            return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
-        
+            return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
+
         def to_percentage(value: float) -> float:
             return value * 100 if value is not None else 0.0
-        
+
         # Create market list
         markets = [
             PendleMarketData(
@@ -298,7 +299,9 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
         return PendleMarketSnapshot(
             markets=filtered_markets,
             liquidity_increase_list=list(liquidity_increase_top_symbols),
-            new_market_liquidity_increaseList=list(new_market_liquidity_increase_symbols),
+            new_market_liquidity_increaseList=list(
+                new_market_liquidity_increase_symbols
+            ),
             apy_increase_list=list(apy_increase_symbols),
             new_market_apy_increase_list=list(new_market_apy_increase_symbols),
         )
