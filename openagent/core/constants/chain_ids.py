@@ -3,7 +3,9 @@
 CHAIN_ID_TO_NETWORK = {
     1: "ethereum",
     10: "optimism",
+    56: "bnb",
     137: "polygon",
+    146: "sonic",
     5000: "mantle",
     8453: "base",
     42161: "arbitrum",

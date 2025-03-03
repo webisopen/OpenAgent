@@ -16,6 +16,7 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain.chat_models import init_chat_model
 from openagent.agent.config import ModelConfig
+from openagent.core.constants.chain_ids import CHAIN_ID_TO_NETWORK
 from openagent.core.database.engine import create_engine
 from openagent.core.tool import Tool
 from openagent.core.utils.fetch_json import fetch_json
@@ -28,19 +29,22 @@ class PendleMarketData:
     """Data of a Pendle market, required for analysis"""
 
     symbol: str
+    chain: str
+    expiry: str
     protocol: str
-    isNewPool: bool
-    liquidityChange24h: float
-    impliedApyChange24h: float
+    is_new_pool: bool
+    liquidity_change_24h: float
+    fixed_apy: float
+    fixed_apy_change_24h: float
 
 
 @dataclass
 class PendleMarketSnapshot:
     markets: list[PendleMarketData]
-    liquidityIncreaseList: list[str]
-    newMarketLiquidityIncreaseList: list[str]
-    apyIncreaseList: list[str]
-    newMarketApyIncreaseList: list[str]
+    liquidity_increase_list: list[str]
+    new_market_liquidity_increaseList: list[str]
+    apy_increase_list: list[str]
+    new_market_apy_increase_list: list[str]
 
 
 class PendleMarket(Base):
@@ -137,20 +141,23 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
             ### Data Structure
             - Markets: List of market objects with:
               - `symbol`: Name
+              - `chain`: Chain
+              - `expiry`: Expiry date
               - `protocol`: Issuing protocol
-              - `isNewPool`: Boolean (new market)
-              - `liquidityChange24h`: 24h liquidity change
-              - `impliedApyChange24h`: 24h APY change
+              - `is_new_pool`: Boolean (new market)
+              - `liquidity_change_24h`: 24h liquidity change in percentage
+              - `fixed_apy`: Fixed APY in percentage
+              - `fixed_apy_change_24h`: 24h APY change in percentage
 
             - Rankings
-              - `liquidityIncreaseList`: Top 3 by liquidity change
-              - `newMarketLiquidityIncreaseList`: Top 3 new markets by liquidity change
-              - `apyIncreaseList`: Top 3 by APY increase
-              - `newMarketApyIncreaseList`: Top 3 new markets by APY increase
+              - `liquidity_increase_list`: Top 3 by liquidity change
+              - `new_market_liquidity_increaseList`: Top 3 new markets by liquidity change
+              - `apy_increase_list`: Top 3 by APY increase
+              - `new_market_apy_increase_list`: Top 3 new markets by APY increase
 
             ### Task
             For each market in the rankings, provide an analysis:
-            - Must be concise with 1 sentence per market, must include `symbol`, `protocol`, `liquidityChange24h`, `impliedApyChange24h`
+            - Must be concise with 1 sentence per market, must include `symbol`, `protocol`, `chain`, `expiry`, `liquidity_change_24h`, `fixed_apy`, `fixed_apy_change_24h`
             - For new markets: add "New Pool"
             - Do not provide personal opinions or financial advice\
             """
@@ -212,27 +219,39 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
     def _process_market_data(results: dict) -> PendleMarketSnapshot:
         """Process raw market data into a structured snapshot"""
 
+        def format_timestamp(timestamp: int) -> str:
+            return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
+        
+        def to_percentage(value: float) -> float:
+            return value * 100 if value is not None else 0.0
+        
         # Create market list
         markets = [
             PendleMarketData(
                 symbol=symbol,
-                isNewPool=is_new,
+                chain=CHAIN_ID_TO_NETWORK.get(chain_id, "chain"),
+                expiry=format_timestamp(expiry),
+                is_new_pool=is_new,
                 protocol=protocol,
-                liquidityChange24h=liquidity,
-                impliedApyChange24h=apy,
+                liquidity_change_24h=to_percentage(liquidity_change_24h),
+                fixed_apy=to_percentage(fixed_apy),
+                fixed_apy_change_24h=to_percentage(fixed_apy_change_24h),
             )
-            for symbol, is_new, protocol, liquidity, apy in zip(
+            for symbol, chain_id, expiry, is_new, protocol, liquidity_change_24h, fixed_apy, fixed_apy_change_24h in zip(
                 results["symbolList"],
+                results["chainIdList"],
+                results["expiryList"],
                 results["isNewList"],
                 results["protocolList"],
                 results["liquidityChange24hList"],
+                results["impliedApyList"],
                 results["impliedApyChange24hList"],
             )
         ]
 
         # Split the markets into new and existing
-        new_markets = [market for market in markets if market.isNewPool]
-        existing_markets = [market for market in markets if not market.isNewPool]
+        new_markets = [market for market in markets if market.is_new_pool]
+        existing_markets = [market for market in markets if not market.is_new_pool]
 
         def get_top_markets(
             markets: list[PendleMarketData], key_attr: str, n: int = 3
@@ -244,12 +263,12 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
             return nlargest(n, filtered_markets, key=lambda x: getattr(x, key_attr))
 
         # Get top markets for both liquidity and APY
-        liquidity_increase = get_top_markets(existing_markets, "liquidityChange24h")
+        liquidity_increase = get_top_markets(existing_markets, "liquidity_change_24h")
         new_market_liquidity_increase = get_top_markets(
-            new_markets, "liquidityChange24h"
+            new_markets, "liquidity_change_24h"
         )
-        apy_increase = get_top_markets(existing_markets, "impliedApyChange24h")
-        new_market_apy_increase = get_top_markets(new_markets, "impliedApyChange24h")
+        apy_increase = get_top_markets(existing_markets, "fixed_apy_change_24h")
+        new_market_apy_increase = get_top_markets(new_markets, "fixed_apy_change_24h")
 
         # Extract symbols from sorted markets in one step
         liquidity_increase_top_symbols = {
@@ -278,8 +297,8 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
 
         return PendleMarketSnapshot(
             markets=filtered_markets,
-            liquidityIncreaseList=list(liquidity_increase_top_symbols),
-            newMarketLiquidityIncreaseList=list(new_market_liquidity_increase_symbols),
-            apyIncreaseList=list(apy_increase_symbols),
-            newMarketApyIncreaseList=list(new_market_apy_increase_symbols),
+            liquidity_increase_list=list(liquidity_increase_top_symbols),
+            new_market_liquidity_increaseList=list(new_market_liquidity_increase_symbols),
+            apy_increase_list=list(apy_increase_symbols),
+            new_market_apy_increase_list=list(new_market_apy_increase_symbols),
         )
