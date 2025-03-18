@@ -27,18 +27,27 @@ class DatabaseManager:
         """Initialize the database connection and run migrations."""
         load_dotenv()
 
-        # Get database URL from environment variable
+        # Get database URL from environment variable or use SQLite by default
         database_url = os.getenv("DATABASE_URL")
         if not database_url:
-            raise ValueError("DATABASE_URL environment variable is not set")
+            # Use SQLite as default
+            storage_dir = os.path.join(os.getcwd(), "storage")
+            os.makedirs(storage_dir, exist_ok=True)
+            database_url = f"sqlite:///{os.path.join(storage_dir, 'openagent.db')}"
+            logger.info(f"DATABASE_URL not set, using SQLite at: {database_url}")
 
-        # Create engine with PostgreSQL-specific configuration
-        cls._engine = create_engine(
-            database_url,
-            pool_pre_ping=True,  # Enable connection health checks
-            pool_size=5,  # Set connection pool size
-            max_overflow=10,  # Maximum number of connections that can be created beyond pool_size
-        )
+        # Create engine with database-specific configuration
+        if database_url.startswith("postgresql://"):
+            # PostgreSQL-specific configuration
+            cls._engine = create_engine(
+                database_url,
+                pool_pre_ping=True,  # Enable connection health checks
+                pool_size=5,  # Set connection pool size
+                max_overflow=10,  # Maximum number of connections that can be created beyond pool_size
+            )
+        else:
+            # SQLite configuration
+            cls._engine = create_engine(database_url)
 
         # Create session factory
         cls._session_factory = sessionmaker(
