@@ -203,9 +203,27 @@ class PendleMarketTool(Tool[PendleMarketConfig]):
             return error_msg
 
     async def _fetch_pendle_market_data(self) -> PendleMarket:
+        headers = {
+            "accept": "application/json, text/plain, */*",
+            "accept-language": "zh-CN,zh;q=0.9",
+            "cache-control": "no-cache",
+            "origin": "https://app.pendle.finance",
+            "pragma": "no-cache",
+            "priority": "u=1, i",
+            "referer": "https://app.pendle.finance/",
+            "sec-ch-ua": '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"macOS"',
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-site",
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            "x-sdk-ui-version": "4.21.5",
+        }
         # Get Pendle market data from API
         result = await fetch_json(
-            url="https://api-v2.pendle.finance/bff/v3/markets/all?isActive=true"
+            url="https://api-v2.pendle.finance/bff/v3/markets/all?isActive=true",
+            headers=headers,
         )
 
         # Process the data
