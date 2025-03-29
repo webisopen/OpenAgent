@@ -1,10 +1,10 @@
-import asyncio
-
+import pytest
 
 from openagent.agent.config import ModelConfig
 from openagent.tools.pendle.market_analysis import PendleMarketTool, PendleMarketConfig
 
 
+@pytest.mark.asyncio
 async def test_pendle_market():
     # Initialize configuration
     config = PendleMarketConfig(
@@ -22,6 +22,7 @@ async def test_pendle_market():
     print(result)
 
 
+@pytest.mark.asyncio
 async def test_pendle_market_postgres():
     # Initialize configuration with PostgreSQL
     config = PendleMarketConfig(
@@ -37,9 +38,3 @@ async def test_pendle_market_postgres():
     result = await market_tool()
     print("\nMarket Analysis Result (PostgreSQL):")
     print(result)
-
-
-if __name__ == "__main__":
-    # Run both tests
-    # asyncio.run(test_pendle_market())
-    asyncio.run(test_pendle_market_postgres())
