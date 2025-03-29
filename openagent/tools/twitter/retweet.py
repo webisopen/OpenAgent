@@ -51,12 +51,13 @@ class TwitterRetweet(Tool[TwitterRetweetConfig]):
             logger.error(f"Error setting up Twitter retweet tool: {e}")
             raise
 
-    async def __call__(self, tweet_id: str) -> Any:
+    async def __call__(self, tweet_id: str, comment: str = None) -> Any:
         """
         Retweet a tweet
 
         Args:
             tweet_id: ID of the tweet to retweet
+            comment: Optional comment to check if tweet is relevant (not used in retweet)
 
         Returns:
             str: URL of the retweeted tweet or error message
@@ -64,6 +65,13 @@ class TwitterRetweet(Tool[TwitterRetweetConfig]):
         if not self.client:
             logger.error("Twitter client not initialized")
             raise ValueError("Twitter client not initialized. Please run setup first.")
+
+        # Check if comment indicates tweet is not relevant
+        if comment and comment.lower().strip() == "not_relevant":
+            logger.info(
+                f"Skipping retweet for tweet {tweet_id}: marked as not relevant"
+            )
+            return "Skipped: Tweet marked as not relevant"
 
         logger.info(f"{self.name} tool is called for tweet: {tweet_id}")
 
