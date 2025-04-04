@@ -115,23 +115,47 @@ class PendleDataTrackerTool(Tool[PendleDataTrackerConfig]):
                 created_at=datetime.now(UTC),
             )
 
-            # Check if TVL increased
-            if tvl_change_percent <= 0:
-                return "TVL has not increased, no tweet needed."
-
-            # Store the data
+            # Store the data (without TVL increase check)
             self.session.add(stats)
             self.session.commit()
 
-            # Format response - directly use the readable format from PendleTracker
+            # Calculate volume change
+            volume_change = "up" if volume_today > volume_prev else "down"
+            volume_change_pct = (
+                ((volume_today - volume_prev) / volume_prev * 100)
+                if volume_prev > 0
+                else 0
+            )
+
+            # Format TVL change direction
+            tvl_direction = (
+                "up"
+                if tvl_change_percent > 0
+                else "down"
+                if tvl_change_percent < 0
+                else "flat"
+            )
+
+            # Format response with explicit guidance for the AI
             formatted_response = f"""
 === Pendle Data Statistics ===
 Latest TVL: {data["Latest TVL"]}
-TVL 24h Change: {data["TVL 24h Change"]}
+TVL 24h Change: {data["TVL 24h Change"]} (Direction: {tvl_direction})
 Total 7d Volume: {data["Total 7d Volume"]}
 Today's Volume: {data["Today's Volume"]}
 Previous Day's Volume: {data["Previous Day's Volume"]}
+Volume Change: {volume_change} {abs(volume_change_pct):.2f}%
 Statistics time: {datetime.now().strftime("%Y-%m-%d %H:%M")}
+
+FORMATTED DATA FOR TWEET:
+- TVL: ${tvl_value / 1e9:.2f}B ({tvl_direction} {abs(tvl_change_percent):.2f}%)
+- Today's Volume: ${volume_today / 1e6:.2f}M ({volume_change} {abs(volume_change_pct):.2f}% from yesterday)
+- 7-Day Volume: ${volume_7d / 1e9:.2f}B
+
+EXAMPLE TWEET FORMAT:
+pendle tvl at ${tvl_value / 1e9:.2f}B, {tvl_direction} {abs(tvl_change_percent):.2f}%
+daily volume ${volume_today / 1e6:.2f}M, {volume_change} {abs(volume_change_pct):.2f}% from yesterday
+yield farmers [your sarcastic comment here]
 """
 
             logger.info(f"{self.name} tool response: {formatted_response.strip()}.")
