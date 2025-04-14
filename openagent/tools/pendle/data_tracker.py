@@ -120,15 +120,39 @@ class PendleDataTrackerTool(Tool[PendleDataTrackerConfig]):
             self.session.commit()
 
             # Format response with basic statistics only
-            formatted_response = f"""
-=== Pendle Data Statistics ===
-Latest TVL: {data["Latest TVL"]}
-TVL 24h Change: {data["TVL 24h Change"]}
-Total 7d Volume: {data["Total 7d Volume"]}
-Today's Volume: {data["Today's Volume"]}
-Previous Day's Volume: {data["Previous Day's Volume"]}
-Statistics time: {datetime.now().strftime("%Y-%m-%d %H:%M")}
-"""
+            formatted_response = "=== Pendle Data Statistics ===\n"
+
+            # Helper function to extract numeric value from formatted string
+            def extract_value(formatted_str, unit):
+                try:
+                    if unit in formatted_str:
+                        parts = formatted_str.split("$")[1].split(unit)[0]
+                        return float(parts)
+                    return 0
+                except (IndexError, ValueError):
+                    return 0
+
+            # Check each metric and only include if non-zero
+            metrics = {
+                "Latest TVL": extract_value(data["Latest TVL"], "B"),
+                "TVL 24h Change": extract_value(data["TVL 24h Change"], "M"),
+                "Total 7d Volume": extract_value(data["Total 7d Volume"], "B"),
+                "Today's Volume": extract_value(data["Today's Volume"], "M"),
+                "Previous Day's Volume": extract_value(
+                    data["Previous Day's Volume"], "M"
+                ),
+            }
+
+            # Build response with non-zero values
+            for key, value in metrics.items():
+                if (key == "TVL 24h Change" and value != 0) or (
+                    key != "TVL 24h Change" and value > 0
+                ):
+                    formatted_response += f"{key}: {data[key]}\n"
+
+            formatted_response += (
+                f"Statistics time: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            )
 
             logger.info(f"{self.name} tool response: {formatted_response.strip()}.")
             return formatted_response.strip()
@@ -427,3 +451,89 @@ class PendleTracker:
             self.results["Previous Day's Volume"] = (
                 f"${prev_day_volume / 1e6:.2f}M ({prev_day_time.strftime('%Y-%m-%d')})"
             )
+
+
+# Add standalone test function
+async def test_data_tracker():
+    """Test the PendleDataTrackerTool functionality and print detailed metrics"""
+    try:
+        print("Starting PendleDataTrackerTool test...")
+
+        # Create tool instance
+        tool = PendleDataTrackerTool()
+
+        # Get data
+        result = await tool()
+
+        # Get raw data and print more detailed information
+        tracker = PendleTracker()
+        data = tracker.get_pendle_data()
+
+        if data:
+            # Parse raw data
+            print("\n=== Detailed Metrics ===")
+            try:
+                tvl_value = float(data["Latest TVL"].split("$")[1].split("B")[0]) * 1e9
+                tvl_change_parts = data["TVL 24h Change"].split("$")[1].split("M")[0]
+                tvl_change_24h = float(tvl_change_parts) * 1e6
+                tvl_change_percent = float(
+                    data["TVL 24h Change"].split("(")[1].split("%")[0]
+                )
+                volume_7d = (
+                    float(data["Total 7d Volume"].split("$")[1].split("B")[0]) * 1e9
+                )
+                volume_today = (
+                    float(data["Today's Volume"].split("$")[1].split("M")[0]) * 1e6
+                )
+                volume_prev = (
+                    float(data["Previous Day's Volume"].split("$")[1].split("M")[0])
+                    * 1e6
+                )
+
+                # Calculate additional metrics
+                volume_change_percent = (
+                    ((volume_today - volume_prev) / volume_prev * 100)
+                    if volume_prev > 0
+                    else 0
+                )
+                tvl_direction = (
+                    "up"
+                    if tvl_change_percent > 0
+                    else "down"
+                    if tvl_change_percent < 0
+                    else "flat"
+                )
+                volume_direction = (
+                    "up"
+                    if volume_today > volume_prev
+                    else "down"
+                    if volume_today < volume_prev
+                    else "flat"
+                )
+
+                # Print detailed metrics
+                print(f"TVL Value: ${tvl_value / 1e9:.6f}B")
+                print(
+                    f"TVL 24h Change: ${tvl_change_24h / 1e6:.6f}M ({tvl_change_percent:.6f}%) - {tvl_direction}"
+                )
+                print(f"7-Day Volume: ${volume_7d / 1e9:.6f}B")
+                print(f"Today's Volume: ${volume_today / 1e6:.6f}M")
+                print(f"Previous Day's Volume: ${volume_prev / 1e6:.6f}M")
+                print(
+                    f"Volume Change: {volume_change_percent:.6f}% - {volume_direction}"
+                )
+
+            except Exception as e:
+                print(f"Error parsing detailed metrics: {e}")
+
+        return result
+    except Exception as e:
+        print(f"Error during test: {e}")
+        raise
+
+
+# Add main function
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(test_data_tracker())
